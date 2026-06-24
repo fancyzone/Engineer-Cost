@@ -52,8 +52,8 @@ namespace 施工定额.Service
             // 3. 消耗量的 ID号 换成对应的新 GUID
             foreach (var xhl in sysXhlList)
             {
-                if (!string.IsNullOrEmpty(xhl.ID号) && idMapping.TryGetValue(xhl.ID号, out var newId))
-                    xhl.ID号 = newId;
+                if (!string.IsNullOrEmpty(xhl.定额ID) && idMapping.TryGetValue(xhl.定额ID, out var newId))
+                    xhl.定额ID = newId;
 
                 xhl.数量 = 0;
                 xhl.市场价合计 = 0;
@@ -84,10 +84,10 @@ namespace 施工定额.Service
                 if (sysXhlList.Count > 0)
                     userConn.Execute(@"
                         INSERT INTO 消耗量
-                            (ID号, 清单编码, 定额编码, 消耗量类别, 消耗量编码, 消耗量名称,
+                            (定额ID, 清单编码, 定额编码, 消耗量类别, 消耗量编码, 消耗量名称,
                              规格型号, 消耗量单位, 含量, 数量, 定额基价, 市场价, 市场价合计)
                         VALUES
-                            (@ID号, @清单编码, @定额编码, @消耗量类别, @消耗量编码, @消耗量名称,
+                            (@定额ID, @清单编码, @定额编码, @消耗量类别, @消耗量编码, @消耗量名称,
                              @规格型号, @消耗量单位, @含量, @数量, @定额基价, @市场价, @市场价合计)",
                         sysXhlList, tx);
 
@@ -132,7 +132,7 @@ namespace 施工定额.Service
 
             foreach (var xhl in sysXhlList)
             {
-                xhl.ID号 = newId;
+                xhl.定额ID = newId;
                 xhl.清单编码 = targetQingdanCode;
                 xhl.定额编码 = dingeCode;
                 xhl.市场价 = xhl.定额基价;
@@ -164,10 +164,10 @@ namespace 施工定额.Service
 
                 userConn.Execute(@"
             INSERT INTO 消耗量
-                (ID号, 清单编码, 定额编码, 消耗量类别, 消耗量编码, 消耗量名称,
+                (定额ID, 清单编码, 定额编码, 消耗量类别, 消耗量编码, 消耗量名称,
                     规格型号, 消耗量单位, 含量, 数量, 定额基价, 市场价, 市场价合计)
             VALUES
-                (@ID号, @清单编码, @定额编码, @消耗量类别, @消耗量编码, @消耗量名称,
+                (@定额ID, @清单编码, @定额编码, @消耗量类别, @消耗量编码, @消耗量名称,
                     @规格型号, @消耗量单位, @含量, @数量, @定额基价, @市场价, @市场价合计)",
                     sysXhlList, tx);
 

@@ -69,7 +69,7 @@ namespace 施工定额.UI
             var ownerQd = _qingdanList
                 .FirstOrDefault(q => q.定额列表
                     .Any(d => d.消耗量列表
-                        .Any(x => x.ID号 == xhl.ID号
+                        .Any(x => x.定额ID == xhl.定额ID
                                && x.消耗量编码 == xhl.消耗量编码)));
 
             if (ownerQd == null) return;

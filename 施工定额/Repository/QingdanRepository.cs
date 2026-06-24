@@ -31,7 +31,7 @@ namespace 施工定额
             var xhlList = multi.Read<Xiaohaoliang>().ToList();
 
             // 组装树结构
-            var xhlLookup = xhlList.ToLookup(x => x.ID号);
+            var xhlLookup = xhlList.ToLookup(x => x.定额ID);
             var dingeLookup = dingeList.ToLookup(d => d.清单编码 ?? "");
 
             foreach (var dg in dingeList)
@@ -72,7 +72,7 @@ namespace 施工定额
                         含量=@含量, 数量=@数量, 定额基价=@定额基价,
                         市场价=@市场价, 市场价合计=@市场价合计
                         WHERE 定额编码=@定额编码 AND 清单编码=@清单编码
-                        AND ID号=@ID号 AND 消耗量编码=@消耗量编码",
+                        AND 定额ID=@定额ID AND 消耗量编码=@消耗量编码",
                             xhl, tx);
                     }
                 }
