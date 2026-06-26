@@ -11,10 +11,6 @@ namespace 施工定额
         private BindingList<Dinge> _dingeBindingList = new BindingList<Dinge>();
         private BindingList<Xiaohaoliang> _xhlBindingList = new BindingList<Xiaohaoliang>();
 
-        private bool _qingdanGridInitialized = false;
-        private bool _dingeGridInitialized = false;
-        private bool _xhlGridInitialized = false;
-
         // 只持有服务和仓储的引用，不直接碰数据库和计算逻辑
         private readonly QingdanRepository _repo;
         private readonly CostCalculationService _calcService;
@@ -74,91 +70,66 @@ namespace 施工定额
         }
         private void Form1_Load(object sender, EventArgs e)
         {
+            // 先建列结构（只做一次）
+            InitializeGridColumns();
             ReloadAndRecalculateEverything();
+        }
+        private void InitializeGridColumns()
+        {
+            GridManager.BindOnce(dataGridView1, myMemoryQingdanBindingList, GridColumns.Qingdan);
+            dataGridView1.Columns.Add(new DataGridViewButtonColumn
+            {
+                Name = "btnViewImage",
+                HeaderText = "图片",
+                Text = "查看",
+                UseColumnTextForButtonValue = true,
+                Width = 60
+            });
+
+            GridManager.BindOnce(DataGridView_dinge, _dingeBindingList, GridColumns.Dinge);
+            GridManager.BindOnce(dataGridView2, _xhlBindingList, GridColumns.Xiaohaoliang);
         }
         // 更新 dataGridView 的显示
         public void UpdateDisplay(DisplayType type)
         {
             switch (type)
             {
-                // ── 清单层 ────────────────────────────────────────────────────────────
                 case DisplayType.Qingdan:
-                    {
-                        if (!_qingdanGridInitialized)
-                        {
-                            GridManager.BindOnce(dataGridView1, myMemoryQingdanBindingList, GridColumns.Qingdan);
+                    // BindingList 已绑定，数据变化会自动通知表格
+                    // 什么都不用做，或者只做滚动定位等纯UI操作
+                    break;
 
-                            if (!dataGridView1.Columns.Contains("btnViewImage"))
-                            {
-                                dataGridView1.Columns.Add(new DataGridViewButtonColumn
-                                {
-                                    Name = "btnViewImage",
-                                    HeaderText = "图片",
-                                    Text = "查看",
-                                    UseColumnTextForButtonValue = true,
-                                    Width = 60
-                                });
-                            }
-                            _qingdanGridInitialized = true;
-                        }
-                        // 数据已经通过 BindingList 的 Clear/Add 更新，这里不需要做任何事
-                        break;
-                    }
-
-                // ── 定额层 ────────────────────────────────────────────────────────────
                 case DisplayType.Dinge:
                     {
-                        var currentQd = myMemoryQingdanBindingList
-                            .FirstOrDefault(q => q.清单编码 == SelectionState.Instance.SelectedQingdanCode);
-
-                        // 先摘事件，防止换数据时误触发
                         DataGridView_dinge.CellValueChanged -= DataGridView_dinge_CellValueChanged;
                         DataGridView_dinge.CellClick -= DataGridView_dinge_CellClick;
 
-                        // 更新稳定 BindingList 的内容
                         _dingeBindingList.Clear();
+                        var currentQd = myMemoryQingdanBindingList
+                            .FirstOrDefault(q => q.清单编码 == SelectionState.Instance.SelectedQingdanCode);
                         if (currentQd != null)
                             foreach (var d in currentQd.定额列表)
                                 _dingeBindingList.Add(d);
 
-                        // 首次才建列+绑定
-                        if (!_dingeGridInitialized)
-                        {
-                            GridManager.BindOnce(DataGridView_dinge, _dingeBindingList, GridColumns.Dinge);
-                            _dingeGridInitialized = true;
-                        }
-
-                        // 挂回事件
                         DataGridView_dinge.CellValueChanged += DataGridView_dinge_CellValueChanged;
                         DataGridView_dinge.CellClick += DataGridView_dinge_CellClick;
                         break;
                     }
 
-                // ── 消耗量层 ──────────────────────────────────────────────────────────
                 case DisplayType.Xiaohaoliang:
                     {
-                        var currentQd = myMemoryQingdanBindingList
-                            .FirstOrDefault(q => q.清单编码 == SelectionState.Instance.SelectedQingdanCode);
-
-                        var currentDg = currentQd?.定额列表.FirstOrDefault(
-                            d => d.定额编码 == SelectionState.Instance.SelectedDingeCode
-                              && d.ID号 == SelectionState.Instance.SelectedDingeID);
-
-                        // 先摘事件
                         dataGridView2.CellValueChanged -= dataGridView2_CellValueChanged;
 
                         _xhlBindingList.Clear();
+                        var currentQd = myMemoryQingdanBindingList
+                            .FirstOrDefault(q => q.清单编码 == SelectionState.Instance.SelectedQingdanCode);
+                        var currentDg = currentQd?.定额列表.FirstOrDefault(
+                            d => d.定额编码 == SelectionState.Instance.SelectedDingeCode
+                              && d.ID号 == SelectionState.Instance.SelectedDingeID);
                         if (currentDg != null)
                             foreach (var x in currentDg.消耗量列表)
                                 _xhlBindingList.Add(x);
 
-                        if (!_xhlGridInitialized)
-                        {
-                            GridManager.BindOnce(dataGridView2, _xhlBindingList, GridColumns.Xiaohaoliang);
-                            _xhlGridInitialized = true;
-                        }
-
-                        // 挂回事件
                         dataGridView2.CellValueChanged += dataGridView2_CellValueChanged;
                         break;
                     }
@@ -194,6 +165,7 @@ namespace 施工定额
             // 4. ⚡【核心：问题3优化】订阅 Form2 的数据导入成功事件
             f2.DataImported += () =>
             {
+                if (IsDisposed) return;
                 // 确保即使在复杂的异步环境下，也能安全地在主线程上刷新 UI
                 if (this.InvokeRequired)
                 {
@@ -247,26 +219,15 @@ namespace 施工定额
             string selectedTabName = tabControl1.TabPages[tabControl1.SelectedIndex].Name;
             if (selectedTabName == "tabRenCaiJi")//人材机汇总界面
             {
-                // 🔥 修复：动态从当前的内存清单树中提取最新的消耗量列表，防止数据滞后
-                var currentXiaohaoliangList = myMemoryQingdanBindingList
-                    .SelectMany(q => q.定额列表)
-                    .SelectMany(d => d.消耗量列表)
-                    .ToList();
-
-                // 工料机大类分析（纯人工、纯材料、纯机械）
-                var 大类汇总 = currentXiaohaoliangList
-                    .GroupBy(q => q.消耗量类别)
-                    .Select(g => new { 类别 = g.Key, 合价合计 = g.Sum(x => x.市场价合计) }).ToList();
-
-                dataGridView3.DataSource = 大类汇总;
+                dataGridView3.DataSource = _summaryPresenter.GetRenCaiJiSummaryFromMemory("");
             }
             if (selectedTabName == "tabCostSummary")//造价汇总界面
                 dataGridView4.DataSource = _summaryPresenter.GetCostSummaryData();
         }
         private void treeView1_AfterSelect(object sender, TreeViewEventArgs e)
         {
-            var result = _repo.GetSummaryByCategory(e.Node.Text);
-            dataGridView3.DataSource = result;
+            dataGridView3.DataSource =
+                   _summaryPresenter.GetRenCaiJiSummaryFromMemory(e.Node.Text);
         }
 
         private void dataGridView2_CellValueChanged(object sender, DataGridViewCellEventArgs e)
@@ -330,6 +291,7 @@ namespace 施工定额
                 // ✅ finally 也要延迟，否则事件重挂时机不对
                 this.BeginInvoke(new Action(() =>
                 {
+                    if (IsDisposed) return;
                     DataGridView_dinge.CellValueChanged += DataGridView_dinge_CellValueChanged;
                 }));
             }
@@ -351,9 +313,13 @@ namespace 施工定额
             string colName = dataGridView1.Columns[e.ColumnIndex].Name;
 
             if (colName == "工程量")
+            {
+                // SaveTree 已经在 OnQingdanWorkAmountChanged 内部完成，不需要再调用
                 _qingdanPresenter.OnQingdanWorkAmountChanged(changedQd);
+                return; // ← 直接返回，避免走到下面的 SaveTree
+            }
 
-            // 步骤4：保存并刷新清单层
+            // 修改的是清单名称、项目特征等其他字段，才在这里保存
             _repo.SaveTree(changedQd);
             UpdateDisplay(DisplayType.Qingdan);
         }

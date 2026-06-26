@@ -133,11 +133,17 @@ namespace 施工定额
             List<int> idList = new List<int>();
             GetAllNodeIds(e.Node, idList);
 
+            // ✅ 加这个保护
+            if (idList.Count == 0)
+            {
+                dataGridView1.DataSource = null;
+                return;
+            }
+
             // 2. 把数字列表变成用逗号隔开的字符串，比如 "3,4,5,6"
             string idStr = string.Join(",", idList);
-
-            // 3. 【核心修改】把 "=" 改成 "IN" 
-            string sql = $"SELECT 清单编码, 清单名称, 项目特征, 单位, 工程量计算规则, 工作内容 FROM 清单 WHERE 分类ID IN ({idStr})";
+            string sql = $"SELECT 清单编码, 清单名称, 项目特征, 单位, 工程量计算规则, 工作内容 " +
+                         $"FROM 清单 WHERE 分类ID IN ({idStr})";
 
             DataTable dtList = new DataTable();
             using (SQLiteConnection conn = new SQLiteConnection(AppConfig.SystemDbConn))
@@ -184,6 +190,12 @@ namespace 施工定额
 
             List<int> ids = new List<int>();
             GetAllNodeIds(e.Node, ids);
+            // ✅ 加保护
+            if (ids.Count == 0)
+            {
+                dataGridView2.DataSource = null;
+                return;
+            }
             // ✅ 真正彻底的纯内存操作：不查数据库，直接从全局缓存里用 LINQ 过滤
             var idSet = new HashSet<int>(ids);
             var filteredList = AppCache.Instance.DingeDetails

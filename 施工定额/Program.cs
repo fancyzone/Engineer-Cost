@@ -11,15 +11,36 @@ namespace 施工定额
         [STAThread]
         static void Main()
         {
-            // 确保数据目录存在
             var dataDir = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                 "施工定额");
-            Directory.CreateDirectory(dataDir); // 目录已存在时此方法不报错
-            // To customize application configuration such as set high DPI settings or default font,
-            // see https://aka.ms/applicationconfiguration.
-            AppCache.Instance.LoadAll(); // ← 加这一行，启动时统一加载
+                    Directory.CreateDirectory(dataDir);
+
             ApplicationConfiguration.Initialize();
+
+            try
+            {
+                AppCache.Instance.LoadAll();
+            }
+            catch (FileNotFoundException ex)
+            {
+                MessageBox.Show(
+                    $"启动失败，找不到必要的数据库文件。\n\n{ex.Message}\n\n请确认数据库文件与程序在同一目录下。",
+                    "启动错误",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+                return; // 干净退出，不进入消息循环
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"启动时加载数据失败：\n\n{ex.Message}\n\n请检查数据库文件是否损坏或被其他程序占用。",
+                    "启动错误",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+                return;
+            }
+
             Application.Run(new Form1());
         }
     }

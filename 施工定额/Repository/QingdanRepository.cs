@@ -68,12 +68,10 @@ namespace 施工定额
 
                     foreach (var xhl in dg.消耗量列表)
                     {
+                        // SaveTree 里只保存"计算结果"字段，不碰市场价
                         conn.Execute(@"UPDATE 消耗量 SET
-                        含量=@含量, 数量=@数量, 定额基价=@定额基价,
-                        市场价=@市场价, 市场价合计=@市场价合计
-                        WHERE 定额编码=@定额编码 AND 清单编码=@清单编码
-                        AND 定额ID=@定额ID AND 消耗量编码=@消耗量编码",
-                            xhl, tx);
+                        含量=@含量, 数量=@数量, 定额基价=@定额基价
+                        WHERE 定额ID=@定额ID AND 消耗量编码=@消耗量编码", xhl, tx);
                     }
                 }
                 tx.Commit();
@@ -85,35 +83,18 @@ namespace 施工定额
             }
         }
         /// <summary>
-        /// 按消耗量类别汇总（用于人材机汇总界面的树形联动）
-        /// </summary>
-        public List<XiaohaoliangSummary> GetSummaryByCategory(string category)
-        {
-            string sql = """
-                SELECT 消耗量类别,
-                消耗量编码,
-                消耗量名称,
-                规格型号,
-                消耗量单位,
-                MAX(市场价)       AS 市场价, -- 同一种材料取最新/最高单价
-                SUM(市场价合计)   AS 市场价合计   -- 所有定额用量的合计金额
-                FROM 消耗量
-                WHERE 消耗量类别 = @类别
-                GROUP BY 消耗量编码, 消耗量名称, 规格型号, 消耗量单位, 消耗量类别
-                """;
-            using var conn = new SQLiteConnection(_connStr);
-            return conn.Query<XiaohaoliangSummary>(sql, new { 类别 = category }).ToList();
-        }
-        /// <summary>
         /// 按消耗量编码批量更新市场价（跨所有定额）
         /// </summary>
         public void UpdateMarketPriceByCode(string 消耗量编码, decimal 新市场价)
         {
             using var conn = new SQLiteConnection(_connStr);
             conn.Execute(@"
-                    UPDATE 消耗量 
-                    SET 市场价 = @价格
-                    WHERE 消耗量编码 = @编码",
+                UPDATE 消耗量 
+                SET 市场价 = @价格,
+                    市场价合计 = ROUND(含量 * 
+                        (SELECT 工程量 FROM 定额_市政工程 
+                         WHERE ID号 = 消耗量.定额ID) * @价格, 2)
+                WHERE 消耗量编码 = @编码",
                 new { 价格 = 新市场价, 编码 = 消耗量编码 });
         }
         /// <summary>
