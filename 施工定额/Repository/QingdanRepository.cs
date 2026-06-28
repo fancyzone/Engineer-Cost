@@ -70,7 +70,7 @@ namespace 施工定额
                     {
                         // SaveTree 里只保存"计算结果"字段，不碰市场价
                         conn.Execute(@"UPDATE 消耗量 SET
-                        含量=@含量, 数量=@数量, 定额基价=@定额基价
+                        含量=@含量, 数量=@数量, 定额基价=@定额基价, 市场价合计=@市场价合计
                         WHERE 定额ID=@定额ID AND 消耗量编码=@消耗量编码", xhl, tx);
                     }
                 }
@@ -90,10 +90,7 @@ namespace 施工定额
             using var conn = new SQLiteConnection(_connStr);
             conn.Execute(@"
                 UPDATE 消耗量 
-                SET 市场价 = @价格,
-                    市场价合计 = ROUND(含量 * 
-                        (SELECT 工程量 FROM 定额_市政工程 
-                         WHERE ID号 = 消耗量.定额ID) * @价格, 2)
+                SET 市场价 = @价格
                 WHERE 消耗量编码 = @编码",
                 new { 价格 = 新市场价, 编码 = 消耗量编码 });
         }

@@ -130,32 +130,23 @@ namespace 施工定额
             if (e.Node == null || e.Node.Tag == null) return;
 
             // 1. 收集当前选中的节点，以及它下面所有子节点的 Tag (分类ID)
-            List<int> idList = new List<int>();
-            GetAllNodeIds(e.Node, idList);
+            List<int> ids = new List<int>();
+            GetAllNodeIds(e.Node, ids);
 
             // ✅ 加这个保护
-            if (idList.Count == 0)
+            if (ids.Count == 0)
             {
                 dataGridView1.DataSource = null;
                 return;
             }
 
-            // 2. 把数字列表变成用逗号隔开的字符串，比如 "3,4,5,6"
-            string idStr = string.Join(",", idList);
-            string sql = $"SELECT 清单编码, 清单名称, 项目特征, 单位, 工程量计算规则, 工作内容 " +
-                         $"FROM 清单 WHERE 分类ID IN ({idStr})";
+            // 和定额侧完全对称，纯内存操作
+            var idSet = new HashSet<int>(ids);
+            var filteredList = AppCache.Instance.QingdanDetails
+                                                .Where(q => idSet.Contains(q.分类ID))
+                                                .ToList();
 
-            DataTable dtList = new DataTable();
-            using (SQLiteConnection conn = new SQLiteConnection(AppConfig.SystemDbConn))
-            {
-                using (SQLiteDataAdapter adapter = new SQLiteDataAdapter(sql, conn))
-                {
-                    adapter.Fill(dtList);
-                }
-            }
-
-            // 绑定给右侧表格显示
-            dataGridView1.DataSource = dtList;
+            dataGridView1.DataSource = filteredList;
 
         }
 

@@ -14,6 +14,8 @@ namespace 施工定额.Helper
         private List<CategoryItem> _dingeCategoryCache = new();
         private List<Dinge> _dingeDetailCache = new();
 
+        private List<QingdanDetail> _qingdanDetailCache = new();
+        public IReadOnlyList<QingdanDetail> QingdanDetails => _qingdanDetailCache.AsReadOnly();
         public IReadOnlyList<CategoryItem> QingdanCategories => _qingdanCategoryCache.AsReadOnly();
         public IReadOnlyList<CategoryItem> DingeCategories => _dingeCategoryCache.AsReadOnly();
         public IReadOnlyList<Dinge> DingeDetails => _dingeDetailCache.AsReadOnly();
@@ -46,6 +48,9 @@ namespace 施工定额.Helper
 
             using var conn = new SQLiteConnection(AppConfig.SystemDbConn);
             _dingeDetailCache = conn.Query<Dinge>("SELECT * FROM 定额_市政工程").ToList();
+
+            _qingdanDetailCache = conn.Query<QingdanDetail>(
+                                        "SELECT 分类ID, 清单编码, 清单名称, 项目特征, 单位, 工程量计算规则, 工作内容 FROM 清单").ToList();
         }
     }
 }
