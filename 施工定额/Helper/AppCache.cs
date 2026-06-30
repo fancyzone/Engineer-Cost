@@ -12,12 +12,11 @@ namespace 施工定额.Helper
 
         private List<CategoryItem> _qingdanCategoryCache = new();
         private List<CategoryItem> _dingeCategoryCache = new();
-        private List<Dinge> _dingeDetailCache = new();
-
         private List<QingdanDetail> _qingdanDetailCache = new();
-        public IReadOnlyList<QingdanDetail> QingdanDetails => _qingdanDetailCache.AsReadOnly();
+        private List<Dinge> _dingeDetailCache = new();
         public IReadOnlyList<CategoryItem> QingdanCategories => _qingdanCategoryCache.AsReadOnly();
         public IReadOnlyList<CategoryItem> DingeCategories => _dingeCategoryCache.AsReadOnly();
+        public IReadOnlyList<QingdanDetail> QingdanDetails => _qingdanDetailCache.AsReadOnly();
         public IReadOnlyList<Dinge> DingeDetails => _dingeDetailCache.AsReadOnly();
         private void ValidateDatabaseFiles()
         {

@@ -72,9 +72,9 @@
 
             try
             {
-                // 用 FromStream 而不是 FromFile，避免文件被锁住
-                using var fs = new FileStream(_files[_index], FileMode.Open, FileAccess.Read);
-                _pictureBox.Image = Image.FromStream(fs);
+                // ✅ MemoryStream 不 using，让 Image 全程持有它
+                var ms = new MemoryStream(File.ReadAllBytes(_files[_index]));
+                _pictureBox.Image = Image.FromStream(ms);
             }
             catch (Exception ex)
             {

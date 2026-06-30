@@ -1,5 +1,4 @@
 ﻿using System.Data;
-using System.Data.SQLite;
 using 施工定额.Entity;
 using 施工定额.Helper;
 using 施工定额.Service;
@@ -42,13 +41,6 @@ namespace 施工定额
                 parentNode.Nodes.Add(childNode);
             }
         }
-
-        /// <summary>
-        /// 递归构建树状结构
-        /// </summary>
-        /// <param name="dt">包含所有分类数据的DataTable</param>
-        /// <param name="currentNodes">当前要添加到的节点集合（第一次是 treeView1.Nodes）</param>
-        /// <param name="parentId">当前正在寻找哪个父ID的儿子（第一次是 0）</param>
 
         /// <summary>
         /// 辅助函数：递归获取某个树节点下的所有子节点ID

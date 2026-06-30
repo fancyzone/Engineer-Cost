@@ -35,7 +35,7 @@ namespace 施工定额.UI
             foreach (var x in same) x.市场价 = newPrice;
 
             // 2. 写库：只更新市场价相关字段（UpdateMarketPriceByCode 现在也负责更新合计）
-            _repo.UpdateMarketPriceByCode(xhl.消耗量编码, newPrice);
+            _repo.UpdateMarketPriceByCode(xhl.消耗量编码, newPrice); // ① 写市场价到 DB
 
             // 3. 重算内存里的清单合价（此时消耗量的市场价合计已在内存中正确，
             //    RecalculateQingdan 会重新 Sum 得到正确的定额合价和清单综合合价）
@@ -44,7 +44,7 @@ namespace 施工定额.UI
 
             // 4. 只保存计算结果（SaveTree 不再碰市场价）
             foreach (var qd in _qingdanList)
-                _repo.SaveTree(qd);
+                _repo.SaveTree(qd);// ② SaveTree 不碰市场价（设计上如此）
 
             _updateDisplay(Form1.DisplayType.Qingdan);
         }

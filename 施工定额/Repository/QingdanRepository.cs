@@ -68,7 +68,9 @@ namespace 施工定额
 
                     foreach (var xhl in dg.消耗量列表)
                     {
-                        // SaveTree 里只保存"计算结果"字段，不碰市场价
+                        // 注意：SaveTree 有意不更新市场价字段。
+                        // 市场价的持久化由 UpdateMarketPriceByCode 单独负责，
+                        // 以便支持"同编码材料全局同价"的跨清单更新语义。
                         conn.Execute(@"UPDATE 消耗量 SET
                         含量=@含量, 数量=@数量, 定额基价=@定额基价, 市场价合计=@市场价合计
                         WHERE 定额ID=@定额ID AND 消耗量编码=@消耗量编码", xhl, tx);
