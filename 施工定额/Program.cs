@@ -10,42 +10,56 @@ namespace 施工定额
         static async Task Main()
         {
             var dataDir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "施工定额");
+       Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+       "施工定额");
             Directory.CreateDirectory(dataDir);
 
             ApplicationConfiguration.Initialize();
 
-            await CheckAndApplyDbUpdateAsync();
+            // 用一个“启动引导窗口”来驱动异步更新检查，
+            // 保证 Application.Run 已经在跑消息泵的情况下再执行下载逻辑。
+            bool startupOk = true;
 
-            try
+            using (var bootstrap = new BootstrapForm())
             {
-                AppCache.Instance.LoadAll();
-            }
-            catch (FileNotFoundException ex)
-            {
-                MessageBox.Show(
-                    $"启动失败，找不到必要的数据库文件。\n\n{ex.Message}\n\n请确认数据库文件与程序在同一目录下，或检查网络连接后重试。",
-                    "启动错误",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
-                return;
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(
-                    $"启动时加载数据失败：\n\n{ex.Message}\n\n请检查数据库文件是否损坏或被其他程序占用。",
-                    "启动错误",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
-                return;
+                bootstrap.RunBootstrap = async () =>
+                {
+                    await CheckAndApplyDbUpdateAsync();
+
+                    try
+                    {
+                        AppCache.Instance.LoadAll();
+                    }
+                    catch (FileNotFoundException ex)
+                    {
+                        MessageBox.Show(
+                            $"启动失败，找不到必要的数据库文件。\n\n{ex.Message}\n\n请确认数据库文件与程序在同一目录下，或检查网络连接后重试。",
+                            "启动错误",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error);
+                        startupOk = false;
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show(
+                            $"启动时加载数据失败：\n\n{ex.Message}\n\n请检查数据库文件是否损坏或被其他程序占用。",
+                            "启动错误",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Error);
+                        startupOk = false;
+                    }
+                };
+
+                Application.Run(bootstrap); // 消息泵从这里开始跑，bootstrap 完成后自动 Close()
             }
 
-            Application.Run(new Form1());
+            if (startupOk)
+                Application.Run(new Form1());
         }
 
         private static async Task CheckAndApplyDbUpdateAsync()
         {
+            CleanupStaleTempFiles();
             string versionUrl = AppConfig.UpdateVersionInfoUrl;
             if (string.IsNullOrWhiteSpace(versionUrl))
                 return; // 未配置更新地址，功能关闭
@@ -79,7 +93,11 @@ namespace 施工定额
             try
             {
                 var progress = new Progress<int>(p => progressForm.SetProgress(p));
-                await updater.DownloadAndApplyAsync(info, progress);
+                await updater.DownloadAndApplyAsync(info, progress, progressForm.Token);
+            }
+            catch (OperationCanceledException) when (progressForm.IsCancelledByUser)
+            {
+                // 用户主动点了取消，不算错误，静默跳过即可
             }
             catch (Exception ex)
             {
@@ -92,6 +110,18 @@ namespace 施工定额
             finally
             {
                 progressForm.Close();
+            }
+        }
+        private static void CleanupStaleTempFiles()
+        {
+            try
+            {
+                foreach (var f in Directory.GetFiles(Path.GetTempPath(), "systemDB_*.zip"))
+                    File.Delete(f);
+            }
+            catch
+            {
+                // 忽略清理失败（比如文件正被占用），不影响主流程
             }
         }
     }
