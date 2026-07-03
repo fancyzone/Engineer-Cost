@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Data;
 using 施工定额.Entity;
+using 施工定额.Export;
 using 施工定额.Helper;
 using 施工定额.UI;
 namespace 施工定额
@@ -322,6 +323,23 @@ namespace 施工定额
             // 修改的是清单名称、项目特征等其他字段，才在这里保存
             _repo.SaveTree(changedQd);
             UpdateDisplay(DisplayType.Qingdan);
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            var strategy = new HenanYdjcExportStrategy();
+            var exportService = new YdjcExportService(strategy);
+
+            var info = new YdjcProjectInfo
+            {
+                ProjectName = "示例项目",
+                Owner = "建设单位名称",
+                CompilerName = "编制单位名称",
+                UnitWorkName = "示例单位工程",
+                Scale = "20000 m2"
+            };
+
+            exportService.Export(myMemoryQingdanBindingList.ToList(), info, @"D:\导出\示例项目.YDJC");
         }
     }
 }

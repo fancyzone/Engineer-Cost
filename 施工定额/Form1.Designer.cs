@@ -48,6 +48,7 @@
             DataGridView_dinge = new DataGridView();
             dataGridView1 = new DataGridView();
             tabControl1 = new TabControl();
+            button1 = new Button();
             tabControl2.SuspendLayout();
             tabPage3.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)dataGridView2).BeginInit();
@@ -241,11 +242,22 @@
             tabControl1.TabIndex = 0;
             tabControl1.SelectedIndexChanged += tabControl1_SelectedIndexChanged;
             // 
+            // button1
+            // 
+            button1.Location = new Point(12, 57);
+            button1.Name = "button1";
+            button1.Size = new Size(81, 26);
+            button1.TabIndex = 2;
+            button1.Text = "button1";
+            button1.UseVisualStyleBackColor = true;
+            button1.Click += button1_Click;
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(9F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(1971, 1147);
+            Controls.Add(button1);
             Controls.Add(tabControl2);
             Controls.Add(tabControl1);
             Name = "Form1";
@@ -281,5 +293,6 @@
         private DataGridView DataGridView_dinge;
         private DataGridView dataGridView1;
         private TabControl tabControl1;
+        private Button button1;
     }
 }

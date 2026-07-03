@@ -16,7 +16,17 @@ namespace 施工定额.Helper
 
         public static string UserDbConn => ResolveConn("UserDb");
         public static string SystemDbConn => ResolveConn("SystemDb");
+        public static string UpdateVersionInfoUrl => _config["UpdateSettings:VersionInfoUrl"] ?? "";
 
+        public static string SystemDbFilePath
+        {
+            get
+            {
+                var builder = new System.Data.Common.DbConnectionStringBuilder();
+                builder.ConnectionString = SystemDbConn;
+                return builder["Data Source"]?.ToString() ?? "";
+            }
+        }
         private static string ResolveConn(string key)
         {
             var raw = _config.GetConnectionString(key)

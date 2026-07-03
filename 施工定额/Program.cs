@@ -1,22 +1,22 @@
 using 施工定额.Helper;
+using 施工定额.Service;
+using 施工定额.UI;
 
 namespace 施工定额
 {
     internal static class Program
     {
-
-        /// <summary>
-        ///  The main entry point for the application.
-        /// </summary>
         [STAThread]
-        static void Main()
+        static async Task Main()
         {
             var dataDir = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                 "施工定额");
-                    Directory.CreateDirectory(dataDir);
+            Directory.CreateDirectory(dataDir);
 
             ApplicationConfiguration.Initialize();
+
+            await CheckAndApplyDbUpdateAsync();
 
             try
             {
@@ -25,11 +25,11 @@ namespace 施工定额
             catch (FileNotFoundException ex)
             {
                 MessageBox.Show(
-                    $"启动失败，找不到必要的数据库文件。\n\n{ex.Message}\n\n请确认数据库文件与程序在同一目录下。",
+                    $"启动失败，找不到必要的数据库文件。\n\n{ex.Message}\n\n请确认数据库文件与程序在同一目录下，或检查网络连接后重试。",
                     "启动错误",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
-                return; // 干净退出，不进入消息循环
+                return;
             }
             catch (Exception ex)
             {
@@ -42,6 +42,57 @@ namespace 施工定额
             }
 
             Application.Run(new Form1());
+        }
+
+        private static async Task CheckAndApplyDbUpdateAsync()
+        {
+            string versionUrl = AppConfig.UpdateVersionInfoUrl;
+            if (string.IsNullOrWhiteSpace(versionUrl))
+                return; // 未配置更新地址，功能关闭
+
+            string systemDbPath = AppConfig.SystemDbFilePath;
+            var updater = new DbUpdateService(versionUrl, systemDbPath);
+
+            VersionInfo? info = await updater.CheckForUpdateAsync();
+            if (info == null)
+                return; // 无更新，或联网失败——都静默跳过
+
+            bool dbMissing = !File.Exists(systemDbPath);
+
+            if (!dbMissing)
+            {
+                var choice = MessageBox.Show(
+                    $"检测到新版定额库\n当前版本：{(string.IsNullOrEmpty(updater.GetLocalVersion()) ? "未知" : updater.GetLocalVersion())}\n最新版本：{info.Version}\n{info.Remark}\n\n是否现在更新？",
+                    "发现更新",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Information);
+
+                if (choice != DialogResult.Yes)
+                    return;
+            }
+            // 首次运行缺库：不打扰用户，直接尝试静默下载
+
+            using var progressForm = new UpdateProgressForm();
+            progressForm.Show();
+            progressForm.Refresh();
+
+            try
+            {
+                var progress = new Progress<int>(p => progressForm.SetProgress(p));
+                await updater.DownloadAndApplyAsync(info, progress);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"更新定额库失败：{ex.Message}\n\n将尝试使用现有数据继续启动。",
+                    "更新失败",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+            }
+            finally
+            {
+                progressForm.Close();
+            }
         }
     }
 }
