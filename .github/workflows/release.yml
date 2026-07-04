@@ -1,0 +1,76 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write   # 需要写权限才能创建 Release
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest   # WinForms 项目需要在 Windows 上编译
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: 提取版本号（去掉 tag 开头的 v）
+        id: version
+        shell: bash
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          VERSION=${TAG#v}
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: 编译发布
+        shell: pwsh
+        run: |
+          dotnet publish 施工定额/施工定额.csproj `
+            -c Release `
+            -r win-x64 `
+            --self-contained false `
+            -p:Version=${{ steps.version.outputs.version }} `
+            -o publish_output
+
+      - name: 打包 zip
+        shell: pwsh
+        run: |
+          Compress-Archive -Path publish_output/* -DestinationPath app_update.zip
+
+      - name: 计算 SHA256
+        id: hash
+        shell: pwsh
+        run: |
+          $hash = (Get-FileHash app_update.zip -Algorithm SHA256).Hash
+          echo "sha256=$hash" >> $env:GITHUB_OUTPUT
+
+      - name: 生成 app_version.json
+        shell: pwsh
+        run: |
+          $json = @{
+            Version = "${{ steps.version.outputs.version }}"
+            Url     = "https://github.com/${{ github.repository }}/releases/latest/download/app_update.zip"
+            Sha256  = "${{ steps.hash.outputs.sha256 }}"
+            Remark  = "自动发布 ${{ steps.version.outputs.version }}"
+          } | ConvertTo-Json
+          Set-Content -Path app_version.json -Value $json -Encoding UTF8
+
+      - name: 发布 GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            app_update.zip
+            app_version.json
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body: 自动发布
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
