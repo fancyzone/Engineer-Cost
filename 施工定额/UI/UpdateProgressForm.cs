@@ -6,26 +6,28 @@
         private readonly Label _lbl;
         private readonly Button _btnCancel;
         private readonly CancellationTokenSource _cts;
+        private readonly string _baseMessage;
 
         public CancellationToken Token => _cts.Token;
         public bool IsCancelledByUser { get; private set; }
 
-        public UpdateProgressForm()
+        public UpdateProgressForm(string title = "正在更新定额库", string message = "正在下载最新数据...")
         {
             _cts = new CancellationTokenSource();
+            _baseMessage = message;
 
-            Text = "正在更新定额库";
+            Text = title;
             Width = 420;
             Height = 260;
             FormBorderStyle = FormBorderStyle.FixedDialog;
             StartPosition = FormStartPosition.CenterScreen;
             MaximizeBox = false;
             MinimizeBox = false;
-            ControlBox = false; // 仍然不允许右上角关闭，改用下面的“取消”按钮统一处理
+            ControlBox = false;
 
             _lbl = new Label
             {
-                Text = "正在下载最新定额库数据...",
+                Text = _baseMessage,
                 Dock = DockStyle.Top,
                 Height = 30,
                 TextAlign = ContentAlignment.MiddleLeft,
@@ -72,13 +74,10 @@
             if (IsDisposed) return;
             _bar.Style = ProgressBarStyle.Blocks;
             _bar.Value = Math.Clamp(percent, 0, 100);
-            _lbl.Text = $"正在下载最新定额库数据... {_bar.Value}%";
+            _lbl.Text = $"{_baseMessage} {_bar.Value}%";
         }
 
-        private void InitializeComponent()
-        {
-
-        }
+        private void InitializeComponent() { }
 
         protected override void Dispose(bool disposing)
         {

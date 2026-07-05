@@ -17,6 +17,7 @@ namespace 施工定额.Helper
         public static string UserDbConn => ResolveConn("UserDb");
         public static string SystemDbConn => ResolveConn("SystemDb");
         public static string UpdateVersionInfoUrl => _config["UpdateSettings:VersionInfoUrl"] ?? "";
+        public static string AppUpdateVersionInfoUrl => _config["UpdateSettings:AppVersionInfoUrl"] ?? "";
 
         public static string SystemDbFilePath
         {

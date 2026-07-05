@@ -231,30 +231,6 @@ namespace 施工定额.Service
                 });
             }
         }
-        /// <summary>
-        /// 文件刚写入磁盘后可能被杀毒软件/索引服务短暂扫描锁定，
-        /// 这里对 IOException（文件被占用）做短暂重试，而不是直接失败。
-        /// </summary>
-        private static async Task<T> OpenWithRetryAsync<T>(Func<T> openFunc, CancellationToken ct)
-        {
-            const int maxAttempts = 5;
-            const int delayMs = 300;
-
-            for (int attempt = 1; attempt <= maxAttempts; attempt++)
-            {
-                try
-                {
-                    return openFunc();
-                }
-                catch (IOException) when (attempt < maxAttempts)
-                {
-                    await Task.Delay(delayMs, ct);
-                }
-            }
-
-            // 最后一次不再吞异常，让真正的错误信息暴露出来
-            return openFunc();
-        }
         // DbUpdateService.cs 内新增一个私有辅助方法
         private static async Task RunWithRetryAsync(Func<Task> action, int maxAttempts = 5, int delayMs = 300)
         {

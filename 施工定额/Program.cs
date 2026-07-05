@@ -16,14 +16,15 @@ namespace 施工定额
 
             ApplicationConfiguration.Initialize();
 
-            // 用一个“启动引导窗口”来驱动异步更新检查，
-            // 保证 Application.Run 已经在跑消息泵的情况下再执行下载逻辑。
             bool startupOk = true;
 
             using (var bootstrap = new BootstrapForm())
             {
                 bootstrap.RunBootstrap = async () =>
                 {
+                    // 程序更新检查（如果确认更新，这里面会直接 Environment.Exit，之后代码不会执行）
+                    await CheckAndApplyAppUpdateAsync();
+
                     await CheckAndApplyDbUpdateAsync();
 
                     try
@@ -50,11 +51,59 @@ namespace 施工定额
                     }
                 };
 
-                Application.Run(bootstrap); // 消息泵从这里开始跑，bootstrap 完成后自动 Close()
+                Application.Run(bootstrap);
             }
 
             if (startupOk)
                 Application.Run(new Form1());
+        }
+
+        private static async Task CheckAndApplyAppUpdateAsync()
+        {
+            string versionUrl = AppConfig.AppUpdateVersionInfoUrl;
+            if (string.IsNullOrWhiteSpace(versionUrl))
+                return; // 未配置，功能关闭
+
+            var updater = new AppUpdateService(versionUrl);
+            AppVersionInfo? info = await updater.CheckForUpdateAsync();
+            if (info == null)
+                return; // 无更新，或联网失败——静默跳过
+
+            var choice = MessageBox.Show(
+                $"检测到新版本程序\n当前版本：{AppUpdateService.GetCurrentVersion()}\n最新版本：{info.Version}\n{info.Remark}\n\n更新后程序会自动重启，是否现在更新？",
+                "发现新版本",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Information);
+
+            if (choice != DialogResult.Yes)
+                return;
+
+            using var progressForm = new UpdateProgressForm("正在更新程序", "正在下载最新版本...");
+            progressForm.Show();
+            progressForm.Refresh();
+
+            try
+            {
+                var progress = new Progress<int>(p => progressForm.SetProgress(p));
+                // 成功的话，内部会启动更新脚本并 Environment.Exit(0)，不会返回到这里
+                await updater.DownloadAndApplyAsync(info, progress, progressForm.Token);
+            }
+            catch (OperationCanceledException) when (progressForm.IsCancelledByUser)
+            {
+                // 用户主动取消，继续用旧版本启动
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"更新程序失败：{ex.Message}\n\n将继续使用当前版本启动。",
+                    "更新失败",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+            }
+            finally
+            {
+                progressForm.Close();
+            }
         }
 
         private static async Task CheckAndApplyDbUpdateAsync()
@@ -62,14 +111,14 @@ namespace 施工定额
             CleanupStaleTempFiles();
             string versionUrl = AppConfig.UpdateVersionInfoUrl;
             if (string.IsNullOrWhiteSpace(versionUrl))
-                return; // 未配置更新地址，功能关闭
+                return;
 
             string systemDbPath = AppConfig.SystemDbFilePath;
             var updater = new DbUpdateService(versionUrl, systemDbPath);
 
             VersionInfo? info = await updater.CheckForUpdateAsync();
             if (info == null)
-                return; // 无更新，或联网失败——都静默跳过
+                return;
 
             bool dbMissing = !File.Exists(systemDbPath);
 
@@ -84,7 +133,6 @@ namespace 施工定额
                 if (choice != DialogResult.Yes)
                     return;
             }
-            // 首次运行缺库：不打扰用户，直接尝试静默下载
 
             using var progressForm = new UpdateProgressForm();
             progressForm.Show();
@@ -97,7 +145,6 @@ namespace 施工定额
             }
             catch (OperationCanceledException) when (progressForm.IsCancelledByUser)
             {
-                // 用户主动点了取消，不算错误，静默跳过即可
             }
             catch (Exception ex)
             {
@@ -112,16 +159,18 @@ namespace 施工定额
                 progressForm.Close();
             }
         }
+
         private static void CleanupStaleTempFiles()
         {
             try
             {
                 foreach (var f in Directory.GetFiles(Path.GetTempPath(), "systemDB_*.zip"))
                     File.Delete(f);
+                foreach (var f in Directory.GetFiles(Path.GetTempPath(), "appupdate_*.zip"))
+                    File.Delete(f);
             }
             catch
             {
-                // 忽略清理失败（比如文件正被占用），不影响主流程
             }
         }
     }
