@@ -341,5 +341,10 @@ namespace 施工定额
 
             exportService.Export(myMemoryQingdanBindingList.ToList(), info, @"D:\导出\示例项目.YDJC");
         }
+
+        private void toolStripButton1_Click(object sender, EventArgs e)
+        {
+            MessageBox.Show("当前版本：1.0.0\n作者：Your Name\n联系方式：");
+        }
     }
 }

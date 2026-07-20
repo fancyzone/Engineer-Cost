@@ -10,8 +10,8 @@ namespace 施工定额
         static async Task Main()
         {
             var dataDir = Path.Combine(
-       Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-       "施工定额");
+                                   Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                                   "施工定额");
             Directory.CreateDirectory(dataDir);
 
             ApplicationConfiguration.Initialize();

@@ -33,6 +33,7 @@
             TreeNode treeNode2 = new TreeNode("材");
             TreeNode treeNode3 = new TreeNode("机");
             TreeNode treeNode4 = new TreeNode("根节点", new TreeNode[] { treeNode1, treeNode2, treeNode3 });
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
             tabControl2 = new TabControl();
             tabPage3 = new TabPage();
             dataGridView2 = new DataGridView();
@@ -48,6 +49,13 @@
             DataGridView_dinge = new DataGridView();
             dataGridView1 = new DataGridView();
             tabControl1 = new TabControl();
+            menuStrip1 = new MenuStrip();
+            文件ToolStripMenuItem = new ToolStripMenuItem();
+            打开ToolStripMenuItem = new ToolStripMenuItem();
+            保存ToolStripMenuItem = new ToolStripMenuItem();
+            toolStrip1 = new ToolStrip();
+            toolStripButton1 = new ToolStripButton();
+            toolStripButton2 = new ToolStripButton();
             button1 = new Button();
             tabControl2.SuspendLayout();
             tabPage3.SuspendLayout();
@@ -60,6 +68,8 @@
             ((System.ComponentModel.ISupportInitialize)DataGridView_dinge).BeginInit();
             ((System.ComponentModel.ISupportInitialize)dataGridView1).BeginInit();
             tabControl1.SuspendLayout();
+            menuStrip1.SuspendLayout();
+            toolStrip1.SuspendLayout();
             SuspendLayout();
             // 
             // tabControl2
@@ -111,7 +121,7 @@
             tabCostSummary.Location = new Point(4, 29);
             tabCostSummary.Name = "tabCostSummary";
             tabCostSummary.Padding = new Padding(3);
-            tabCostSummary.Size = new Size(1774, 657);
+            tabCostSummary.Size = new Size(1774, 607);
             tabCostSummary.TabIndex = 3;
             tabCostSummary.Text = "费用汇总";
             tabCostSummary.UseVisualStyleBackColor = true;
@@ -135,7 +145,7 @@
             tabRenCaiJi.Location = new Point(4, 29);
             tabRenCaiJi.Name = "tabRenCaiJi";
             tabRenCaiJi.Padding = new Padding(3);
-            tabRenCaiJi.Size = new Size(1774, 657);
+            tabRenCaiJi.Size = new Size(1774, 607);
             tabRenCaiJi.TabIndex = 2;
             tabRenCaiJi.Text = "人才机汇总";
             tabRenCaiJi.UseVisualStyleBackColor = true;
@@ -174,7 +184,7 @@
             tabPage7.Location = new Point(4, 29);
             tabPage7.Name = "tabPage7";
             tabPage7.Padding = new Padding(3);
-            tabPage7.Size = new Size(1774, 657);
+            tabPage7.Size = new Size(1774, 607);
             tabPage7.TabIndex = 4;
             tabPage7.Text = "其他";
             tabPage7.UseVisualStyleBackColor = true;
@@ -184,7 +194,7 @@
             tabPage2.Location = new Point(4, 29);
             tabPage2.Name = "tabPage2";
             tabPage2.Padding = new Padding(3);
-            tabPage2.Size = new Size(1774, 657);
+            tabPage2.Size = new Size(1774, 607);
             tabPage2.TabIndex = 1;
             tabPage2.Text = "措施";
             tabPage2.UseVisualStyleBackColor = true;
@@ -196,7 +206,7 @@
             tabPage1.Location = new Point(4, 29);
             tabPage1.Name = "tabPage1";
             tabPage1.Padding = new Padding(3);
-            tabPage1.Size = new Size(1774, 657);
+            tabPage1.Size = new Size(1774, 607);
             tabPage1.TabIndex = 0;
             tabPage1.Text = "分部分项";
             tabPage1.UseVisualStyleBackColor = true;
@@ -235,16 +245,74 @@
             tabControl1.Controls.Add(tabPage7);
             tabControl1.Controls.Add(tabRenCaiJi);
             tabControl1.Controls.Add(tabCostSummary);
-            tabControl1.Location = new Point(117, 28);
+            tabControl1.Location = new Point(117, 78);
             tabControl1.Name = "tabControl1";
             tabControl1.SelectedIndex = 0;
-            tabControl1.Size = new Size(1782, 690);
+            tabControl1.Size = new Size(1782, 640);
             tabControl1.TabIndex = 0;
             tabControl1.SelectedIndexChanged += tabControl1_SelectedIndexChanged;
             // 
+            // menuStrip1
+            // 
+            menuStrip1.ImageScalingSize = new Size(20, 20);
+            menuStrip1.Items.AddRange(new ToolStripItem[] { 文件ToolStripMenuItem });
+            menuStrip1.Location = new Point(0, 0);
+            menuStrip1.Name = "menuStrip1";
+            menuStrip1.Size = new Size(1971, 28);
+            menuStrip1.TabIndex = 3;
+            menuStrip1.Text = "menuStrip1";
+            // 
+            // 文件ToolStripMenuItem
+            // 
+            文件ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 打开ToolStripMenuItem, 保存ToolStripMenuItem });
+            文件ToolStripMenuItem.Name = "文件ToolStripMenuItem";
+            文件ToolStripMenuItem.Size = new Size(53, 24);
+            文件ToolStripMenuItem.Text = "文件";
+            // 
+            // 打开ToolStripMenuItem
+            // 
+            打开ToolStripMenuItem.Name = "打开ToolStripMenuItem";
+            打开ToolStripMenuItem.Size = new Size(122, 26);
+            打开ToolStripMenuItem.Text = "打开";
+            // 
+            // 保存ToolStripMenuItem
+            // 
+            保存ToolStripMenuItem.Name = "保存ToolStripMenuItem";
+            保存ToolStripMenuItem.Size = new Size(122, 26);
+            保存ToolStripMenuItem.Text = "保存";
+            // 
+            // toolStrip1
+            // 
+            toolStrip1.ImageScalingSize = new Size(20, 20);
+            toolStrip1.Items.AddRange(new ToolStripItem[] { toolStripButton1, toolStripButton2 });
+            toolStrip1.Location = new Point(0, 28);
+            toolStrip1.Name = "toolStrip1";
+            toolStrip1.Size = new Size(1971, 47);
+            toolStrip1.TabIndex = 4;
+            toolStrip1.Text = "toolStrip1";
+            // 
+            // toolStripButton1
+            // 
+            toolStripButton1.Image = (Image)resources.GetObject("toolStripButton1.Image");
+            toolStripButton1.ImageTransparentColor = Color.Magenta;
+            toolStripButton1.Name = "toolStripButton1";
+            toolStripButton1.Size = new Size(73, 44);
+            toolStripButton1.Text = "检查更新";
+            toolStripButton1.TextImageRelation = TextImageRelation.ImageAboveText;
+            toolStripButton1.Click += toolStripButton1_Click;
+            // 
+            // toolStripButton2
+            // 
+            toolStripButton2.DisplayStyle = ToolStripItemDisplayStyle.Image;
+            toolStripButton2.Image = (Image)resources.GetObject("toolStripButton2.Image");
+            toolStripButton2.ImageTransparentColor = Color.Magenta;
+            toolStripButton2.Name = "toolStripButton2";
+            toolStripButton2.Size = new Size(29, 44);
+            toolStripButton2.Text = "toolStripButton2";
+            // 
             // button1
             // 
-            button1.Location = new Point(12, 57);
+            button1.Location = new Point(12, 133);
             button1.Name = "button1";
             button1.Size = new Size(81, 26);
             button1.TabIndex = 2;
@@ -257,9 +325,12 @@
             AutoScaleDimensions = new SizeF(9F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(1971, 1147);
+            Controls.Add(toolStrip1);
             Controls.Add(button1);
             Controls.Add(tabControl2);
             Controls.Add(tabControl1);
+            Controls.Add(menuStrip1);
+            MainMenuStrip = menuStrip1;
             Name = "Form1";
             Text = "Form1";
             Load += Form1_Load;
@@ -274,7 +345,12 @@
             ((System.ComponentModel.ISupportInitialize)DataGridView_dinge).EndInit();
             ((System.ComponentModel.ISupportInitialize)dataGridView1).EndInit();
             tabControl1.ResumeLayout(false);
+            menuStrip1.ResumeLayout(false);
+            menuStrip1.PerformLayout();
+            toolStrip1.ResumeLayout(false);
+            toolStrip1.PerformLayout();
             ResumeLayout(false);
+            PerformLayout();
         }
 
         #endregion
@@ -293,6 +369,13 @@
         private DataGridView DataGridView_dinge;
         private DataGridView dataGridView1;
         private TabControl tabControl1;
+        private MenuStrip menuStrip1;
+        private ToolStripMenuItem 文件ToolStripMenuItem;
+        private ToolStripMenuItem 打开ToolStripMenuItem;
+        private ToolStripMenuItem 保存ToolStripMenuItem;
+        private ToolStrip toolStrip1;
+        private ToolStripButton toolStripButton1;
         private Button button1;
+        private ToolStripButton toolStripButton2;
     }
 }
