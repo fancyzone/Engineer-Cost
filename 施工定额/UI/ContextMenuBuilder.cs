@@ -1,34 +1,25 @@
-using System.ComponentModel;
-using 施工定额.Entity;
-
 namespace 施工定额.UI
 {
     /// <summary>
-    /// 统一管理所有 DataGridView 的右键菜单。
-    /// 每个 Build 方法负责一个表格的菜单，Form1 只调用 Build，不关心内部逻辑。
+    /// 统一管理 DataGridView 右键菜单。
+    /// 删除等业务走 Presenter，不再直接依赖 Repository。
     /// </summary>
     public class ContextMenuBuilder
     {
-        private readonly QingdanRepository _repo;
-        private readonly Func<BindingList<Qingdan>> _getQingdanList;
-        private readonly Action<DisplayType> _updateDisplay;
+        private readonly QingdanPresenter _presenter;
+        private readonly SelectionState _selection;
         private readonly Action _reloadAll;
 
         public ContextMenuBuilder(
-            QingdanRepository repo,
-            Func<BindingList<Qingdan>> getQingdanList,
-            Action<DisplayType> updateDisplay,
+            QingdanPresenter presenter,
+            SelectionState selection,
             Action reloadAll)
         {
-            _repo = repo;
-            _getQingdanList = getQingdanList;
-            _updateDisplay = updateDisplay;
+            _presenter = presenter;
+            _selection = selection;
             _reloadAll = reloadAll;
         }
 
-        /// <summary>
-        /// 构建清单表格（dataGridView1）的右键菜单
-        /// </summary>
         public ContextMenuStrip BuildQingdanMenu(DataGridView dgv)
         {
             var menu = new ContextMenuStrip();
@@ -38,20 +29,15 @@ namespace 施工定额.UI
             menu.Items.Add(deleteItem);
 
             var newItem = new ToolStripMenuItem("新建清单");
-            newItem.Click += (_, _) => CreateNewQingdan(dgv);
+            newItem.Click += (_, _) => CreateNewQingdan();
             menu.Items.Add(newItem);
 
             return menu;
         }
 
-        /// <summary>
-        /// 构建定额表格（DataGridView_dinge）的右键菜单
-        /// </summary>
         public ContextMenuStrip BuildDingeMenu(DataGridView dgv)
         {
-            var menu = new ContextMenuStrip();
-            // 后续有需要再加删除定额等菜单项
-            return menu;
+            return new ContextMenuStrip();
         }
 
         private void DeleteQingdan(DataGridView dgv)
@@ -72,19 +58,10 @@ namespace 施工定额.UI
 
             try
             {
-                _repo.DeleteQingdan(code);
+                _presenter.DeleteQingdan(code);
 
-                var list = _getQingdanList();
-                var toRemove = list.FirstOrDefault(q => q.清单编码 == code);
-                if (toRemove != null)
-                    list.Remove(toRemove);
-
-                if (SelectionState.Instance.SelectedQingdanCode == code)
-                    SelectionState.Instance.SelectQingdan("");
-
-                _updateDisplay(DisplayType.Qingdan);
-                _updateDisplay(DisplayType.Dinge);
-                _updateDisplay(DisplayType.Xiaohaoliang);
+                if (_selection.SelectedQingdanCode == code)
+                    _selection.SelectQingdan("");
             }
             catch (Exception ex)
             {
@@ -93,7 +70,7 @@ namespace 施工定额.UI
             }
         }
 
-        private void CreateNewQingdan(DataGridView dgv)
+        private void CreateNewQingdan()
         {
             var f2 = new Form2("");
             f2.DataImported += () => _reloadAll();

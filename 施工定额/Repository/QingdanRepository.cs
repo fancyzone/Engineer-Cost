@@ -4,7 +4,7 @@ using 施工定额.Entity;
 
 namespace 施工定额
 {
-    public class QingdanRepository
+    public class QingdanRepository : IQingdanRepository
     {
         private readonly string _connStr;
 
@@ -13,9 +13,6 @@ namespace 施工定额
             _connStr = connStr;
         }
 
-        /// <summary>
-        /// 从数据库加载完整的清单树（含定额、消耗量）
-        /// </summary>
         public List<Qingdan> LoadTree()
         {
             string sql = @"
@@ -30,7 +27,6 @@ namespace 施工定额
             var dingeList = multi.Read<Dinge>().ToList();
             var xhlList = multi.Read<Xiaohaoliang>().ToList();
 
-            // 组装树结构
             var xhlLookup = xhlList.ToLookup(x => x.定额ID);
             var dingeLookup = dingeList.ToLookup(d => d.清单编码 ?? "");
 
@@ -43,9 +39,6 @@ namespace 施工定额
             return qingdanList;
         }
 
-        /// <summary>
-        /// 将一棵清单树持久化回数据库（事务保护）
-        /// </summary>
         public void SaveTree(Qingdan qd)
         {
             using var conn = new SqliteConnection(_connStr);
@@ -68,9 +61,6 @@ namespace 施工定额
 
                     foreach (var xhl in dg.消耗量列表)
                     {
-                        // 注意：SaveTree 有意不更新市场价字段。
-                        // 市场价的持久化由 UpdateMarketPriceByCode 单独负责，
-                        // 以便支持"同编码材料全局同价"的跨清单更新语义。
                         conn.Execute(@"UPDATE 消耗量 SET
                         含量=@含量, 数量=@数量, 定额基价=@定额基价, 市场价合计=@市场价合计
                         WHERE 定额ID=@定额ID AND 消耗量编码=@消耗量编码", xhl, tx);
@@ -84,9 +74,7 @@ namespace 施工定额
                 throw;
             }
         }
-        /// <summary>
-        /// 按消耗量编码批量更新市场价（跨所有定额）
-        /// </summary>
+
         public void UpdateMarketPriceByCode(string 消耗量编码, decimal 新市场价)
         {
             using var conn = new SqliteConnection(_connStr);
@@ -96,9 +84,7 @@ namespace 施工定额
                 WHERE 消耗量编码 = @编码",
                 new { 价格 = 新市场价, 编码 = 消耗量编码 });
         }
-        /// <summary>
-        /// 删除一条清单及其下属的所有定额和消耗量
-        /// </summary>
+
         public void DeleteQingdan(string qingdanCode)
         {
             using var conn = new SqliteConnection(_connStr);
@@ -106,7 +92,6 @@ namespace 施工定额
             using var tx = conn.BeginTransaction();
             try
             {
-                // 先删消耗量，再删定额，最后删清单（依赖顺序）
                 conn.Execute("DELETE FROM 消耗量 WHERE 清单编码 = @Code",
                     new { Code = qingdanCode }, tx);
                 conn.Execute("DELETE FROM 定额_市政工程 WHERE 清单编码 = @Code",
