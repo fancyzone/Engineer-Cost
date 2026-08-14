@@ -9,10 +9,8 @@ namespace 施工定额
         [STAThread]
         static async Task Main()
         {
-            var dataDir = Path.Combine(
-                                   Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                                   "施工定额");
-            Directory.CreateDirectory(dataDir);
+            Directory.CreateDirectory(AppConfig.DataDirectory);
+            AppLogger.Info($"程序启动，版本 {System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}");
 
             ApplicationConfiguration.Initialize();
 
@@ -22,9 +20,7 @@ namespace 施工定额
             {
                 bootstrap.RunBootstrap = async () =>
                 {
-                    // 程序更新检查（如果确认更新，这里面会直接 Environment.Exit，之后代码不会执行）
                     await CheckAndApplyAppUpdateAsync();
-
                     await CheckAndApplyDbUpdateAsync();
 
                     try
@@ -33,6 +29,7 @@ namespace 施工定额
                     }
                     catch (FileNotFoundException ex)
                     {
+                        AppLogger.Error("启动失败：找不到数据库文件", ex);
                         MessageBox.Show(
                             $"启动失败，找不到必要的数据库文件。\n\n{ex.Message}\n\n请确认数据库文件与程序在同一目录下，或检查网络连接后重试。",
                             "启动错误",
@@ -42,6 +39,7 @@ namespace 施工定额
                     }
                     catch (Exception ex)
                     {
+                        AppLogger.Error("启动时加载数据失败", ex);
                         MessageBox.Show(
                             $"启动时加载数据失败：\n\n{ex.Message}\n\n请检查数据库文件是否损坏或被其他程序占用。",
                             "启动错误",
@@ -62,12 +60,12 @@ namespace 施工定额
         {
             string versionUrl = AppConfig.AppUpdateVersionInfoUrl;
             if (string.IsNullOrWhiteSpace(versionUrl))
-                return; // 未配置，功能关闭
+                return;
 
             var updater = new AppUpdateService(versionUrl);
             AppVersionInfo? info = await updater.CheckForUpdateAsync();
             if (info == null)
-                return; // 无更新，或联网失败——静默跳过
+                return;
 
             var choice = MessageBox.Show(
                 $"检测到新版本程序\n当前版本：{AppUpdateService.GetCurrentVersion()}\n最新版本：{info.Version}\n{info.Remark}\n\n更新后程序会自动重启，是否现在更新？",
@@ -85,15 +83,14 @@ namespace 施工定额
             try
             {
                 var progress = new Progress<int>(p => progressForm.SetProgress(p));
-                // 成功的话，内部会启动更新脚本并 Environment.Exit(0)，不会返回到这里
                 await updater.DownloadAndApplyAsync(info, progress, progressForm.Token);
             }
             catch (OperationCanceledException) when (progressForm.IsCancelledByUser)
             {
-                // 用户主动取消，继续用旧版本启动
             }
             catch (Exception ex)
             {
+                AppLogger.Error("更新程序失败", ex);
                 MessageBox.Show(
                     $"更新程序失败：{ex.Message}\n\n将继续使用当前版本启动。",
                     "更新失败",
@@ -148,6 +145,7 @@ namespace 施工定额
             }
             catch (Exception ex)
             {
+                AppLogger.Error("更新定额库失败", ex);
                 MessageBox.Show(
                     $"更新定额库失败：{ex.Message}\n\n将尝试使用现有数据继续启动。",
                     "更新失败",

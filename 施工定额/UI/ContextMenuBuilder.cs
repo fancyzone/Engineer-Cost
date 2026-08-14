@@ -1,3 +1,5 @@
+using 施工定额.Helper;
+
 namespace 施工定额.UI
 {
     /// <summary>
@@ -65,8 +67,7 @@ namespace 施工定额.UI
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"删除失败：{ex.Message}", "错误",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                ErrorHandler.Show(ex, "删除失败");
             }
         }
 
