@@ -23,19 +23,19 @@ namespace 施工定额.Export
 
     /// <summary>
     /// 河南省《建设工程工程造价成果数据交换标准》(.YDJC) 导出服务。
-    /// 项目级费用汇总使用 CostCalculationService.CalculateProjectSummary。
+    /// 项目级费用汇总使用 ICostCalculationService.CalculateProjectSummary。
     /// </summary>
     public class YdjcExportService
     {
         private readonly IYdjcExportStrategy _strategy;
-        private readonly CostCalculationService _calcService;
+        private readonly ICostCalculationService _calcService;
 
         public YdjcExportService(IYdjcExportStrategy strategy)
             : this(strategy, new CostCalculationService())
         {
         }
 
-        public YdjcExportService(IYdjcExportStrategy strategy, CostCalculationService calcService)
+        public YdjcExportService(IYdjcExportStrategy strategy, ICostCalculationService calcService)
         {
             _strategy = strategy;
             _calcService = calcService;
