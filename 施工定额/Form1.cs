@@ -9,24 +9,25 @@ namespace 施工定额
 {
     public partial class Form1 : Form
     {
-        private BindingList<Qingdan> myMemoryQingdanBindingList = new BindingList<Qingdan>();
-        private BindingList<Dinge> _dingeBindingList = new BindingList<Dinge>();
-        private BindingList<Xiaohaoliang> _xhlBindingList = new BindingList<Xiaohaoliang>();
+        private readonly BindingList<Qingdan> myMemoryQingdanBindingList = new BindingList<Qingdan>();
+        private readonly BindingList<Dinge> _dingeBindingList = new BindingList<Dinge>();
+        private readonly BindingList<Xiaohaoliang> _xhlBindingList = new BindingList<Xiaohaoliang>();
 
-        // 仓储仅用于组装依赖；计算与保存统一走 Presenter
-        private readonly QingdanRepository _repo;
+        private readonly IQingdanRepository _repo;
+        private readonly ICostCalculationService _calcService;
+        private readonly SelectionState _selection;
         private readonly QingdanPresenter _qingdanPresenter;
         private readonly SummaryPresenter _summaryPresenter;
-        private ContextMenuBuilder _menuBuilder;
+        private readonly ContextMenuBuilder _menuBuilder;
 
         public void ReloadAndRecalculateEverything()
         {
             _qingdanPresenter.ReloadAll();
 
             var stillExists = myMemoryQingdanBindingList.Any(
-                q => q.清单编码 == SelectionState.Instance.SelectedQingdanCode);
+                q => q.清单编码 == _selection.SelectedQingdanCode);
             if (!stillExists)
-                SelectionState.Instance.SelectQingdan("");
+                _selection.SelectQingdan("");
 
             UpdateDisplay(DisplayType.Qingdan);
             UpdateDisplay(DisplayType.Dinge);
@@ -37,31 +38,32 @@ namespace 施工定额
         {
             InitializeComponent();
 
+            // 组合根：在此处组装依赖，Form 只持有抽象与 Presenter
             _repo = new QingdanRepository(AppConfig.UserDbConn);
-            ICostCalculationService calcService = new CostCalculationService();
+            _calcService = new CostCalculationService();
+            _selection = new SelectionState();
+
+            _qingdanPresenter = new QingdanPresenter(
+                _repo, _calcService, myMemoryQingdanBindingList, UpdateDisplay);
+            _summaryPresenter = new SummaryPresenter(myMemoryQingdanBindingList);
 
             _menuBuilder = new ContextMenuBuilder(
-                _repo,
-                () => myMemoryQingdanBindingList,
-                UpdateDisplay,
+                _qingdanPresenter,
+                _selection,
                 ReloadAndRecalculateEverything);
             dataGridView1.ContextMenuStrip = _menuBuilder.BuildQingdanMenu(dataGridView1);
 
-            _qingdanPresenter = new QingdanPresenter(
-                _repo, calcService, myMemoryQingdanBindingList, UpdateDisplay);
-            _summaryPresenter = new SummaryPresenter(myMemoryQingdanBindingList);
-
-            SelectionState.Instance.QingdanSelectionChanged += OnQingdanSelectionChanged;
-            SelectionState.Instance.DingeSelectionChanged += OnDingeSelectionChanged;
+            _selection.QingdanSelectionChanged += OnQingdanSelectionChanged;
+            _selection.DingeSelectionChanged += OnDingeSelectionChanged;
         }
 
-        private void OnQingdanSelectionChanged(object sender, string code)
+        private void OnQingdanSelectionChanged(object? sender, string code)
         {
             UpdateDisplay(DisplayType.Dinge);
             UpdateDisplay(DisplayType.Xiaohaoliang);
         }
 
-        private void OnDingeSelectionChanged(object sender, (string code, string id) _)
+        private void OnDingeSelectionChanged(object? sender, (string code, string id) _)
         {
             UpdateDisplay(DisplayType.Xiaohaoliang);
         }
@@ -96,7 +98,6 @@ namespace 施工定额
             switch (type)
             {
                 case DisplayType.Qingdan:
-                    // BindingList 已绑定，属性变更会自动通知表格
                     break;
 
                 case DisplayType.Dinge:
@@ -106,7 +107,7 @@ namespace 施工定额
 
                         _dingeBindingList.Clear();
                         var currentQd = myMemoryQingdanBindingList
-                            .FirstOrDefault(q => q.清单编码 == SelectionState.Instance.SelectedQingdanCode);
+                            .FirstOrDefault(q => q.清单编码 == _selection.SelectedQingdanCode);
                         if (currentQd != null)
                             foreach (var d in currentQd.定额列表)
                                 _dingeBindingList.Add(d);
@@ -122,10 +123,10 @@ namespace 施工定额
 
                         _xhlBindingList.Clear();
                         var currentQd = myMemoryQingdanBindingList
-                            .FirstOrDefault(q => q.清单编码 == SelectionState.Instance.SelectedQingdanCode);
+                            .FirstOrDefault(q => q.清单编码 == _selection.SelectedQingdanCode);
                         var currentDg = currentQd?.定额列表.FirstOrDefault(
-                            d => d.定额编码 == SelectionState.Instance.SelectedDingeCode
-                              && d.ID号 == SelectionState.Instance.SelectedDingeID);
+                            d => d.定额编码 == _selection.SelectedDingeCode
+                              && d.ID号 == _selection.SelectedDingeID);
                         if (currentDg != null)
                             foreach (var x in currentDg.消耗量列表)
                                 _xhlBindingList.Add(x);
@@ -140,7 +141,7 @@ namespace 施工定额
         {
             if (e.RowIndex == -1) return;
             string 清单编码 = dataGridView1.Rows[e.RowIndex].Cells["清单编码"].Value?.ToString() ?? "";
-            SelectionState.Instance.SelectQingdan(清单编码);
+            _selection.SelectQingdan(清单编码);
         }
 
         private void dataGridView1_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
@@ -252,14 +253,13 @@ namespace 施工定额
 
             DataGridView_dinge.CommitEdit(DataGridViewDataErrorContexts.Commit);
             var currentQd = myMemoryQingdanBindingList
-                .FirstOrDefault(q => q.清单编码 == SelectionState.Instance.SelectedQingdanCode);
+                .FirstOrDefault(q => q.清单编码 == _selection.SelectedQingdanCode);
             if (currentQd == null) return;
 
             DataGridView_dinge.CellValueChanged -= DataGridView_dinge_CellValueChanged;
 
             try
             {
-                // 业务：重算 + 保存，全部交给 Presenter
                 _qingdanPresenter.OnDingeChanged(currentQd);
             }
             catch (Exception ex)
@@ -281,7 +281,7 @@ namespace 施工定额
             if (e.RowIndex == -1) return;
             string 定额编码 = DataGridView_dinge.Rows[e.RowIndex].Cells["定额编码"].Value?.ToString() ?? "";
             string ID号 = DataGridView_dinge.Rows[e.RowIndex].Cells["ID号"].Value?.ToString() ?? "";
-            SelectionState.Instance.SelectDinge(定额编码, ID号);
+            _selection.SelectDinge(定额编码, ID号);
         }
 
         private void dataGridView1_CellEndEdit(object sender, DataGridViewCellEventArgs e)
@@ -297,14 +297,13 @@ namespace 施工定额
                 return;
             }
 
-            // 名称、项目特征等非计算字段
             _qingdanPresenter.SaveQingdanFields(changedQd);
         }
 
         private void button1_Click(object sender, EventArgs e)
         {
-            var strategy = new HenanYdjcExportStrategy();
-            var exportService = new YdjcExportService(strategy);
+            IYdjcExportStrategy strategy = new HenanYdjcExportStrategy();
+            var exportService = new YdjcExportService(strategy, _calcService);
 
             var info = new YdjcProjectInfo
             {
@@ -320,7 +319,8 @@ namespace 施工定额
 
         private void toolStripButton1_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("当前版本：1.0.0\n作者：Your Name\n联系方式：");
+            var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+            MessageBox.Show($"当前版本：{version}\n作者：Your Name\n联系方式：");
         }
     }
 }
