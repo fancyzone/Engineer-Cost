@@ -16,5 +16,8 @@ namespace 施工定额.Service
 
         /// <summary>重算单条定额（含下属所有消耗量）</summary>
         void RecalculateDinge(Dinge dg);
+
+        /// <summary>项目级汇总：分部分项、人材机、取费、税金</summary>
+        ProjectCostSummary CalculateProjectSummary(IEnumerable<Qingdan> qingdanList);
     }
 }
