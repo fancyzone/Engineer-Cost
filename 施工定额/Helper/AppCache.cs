@@ -4,8 +4,12 @@ using 施工定额.Entity;
 
 namespace 施工定额.Helper
 {
-    // 只管"从数据库预加载的静态参考数据"
-    public class AppCache
+    /// <summary>
+    /// 系统库静态参考数据缓存。
+    /// 实现 IAppCache；默认仍提供 Instance 便于启动阶段使用。
+    /// UI / 业务层应通过构造注入 IAppCache。
+    /// </summary>
+    public class AppCache : IAppCache
     {
         private static readonly AppCache _instance = new();
         public static AppCache Instance => _instance;
@@ -14,13 +18,14 @@ namespace 施工定额.Helper
         private List<CategoryItem> _dingeCategoryCache = new();
         private List<QingdanDetail> _qingdanDetailCache = new();
         private List<Dinge> _dingeDetailCache = new();
+
         public IReadOnlyList<CategoryItem> QingdanCategories => _qingdanCategoryCache.AsReadOnly();
         public IReadOnlyList<CategoryItem> DingeCategories => _dingeCategoryCache.AsReadOnly();
         public IReadOnlyList<QingdanDetail> QingdanDetails => _qingdanDetailCache.AsReadOnly();
         public IReadOnlyList<Dinge> DingeDetails => _dingeDetailCache.AsReadOnly();
+
         private void ValidateDatabaseFiles()
         {
-            // 从连接字符串里提取文件路径
             var sysBuilder = new System.Data.Common.DbConnectionStringBuilder();
             sysBuilder.ConnectionString = AppConfig.SystemDbConn;
 
@@ -37,9 +42,8 @@ namespace 施工定额.Helper
                 throw new FileNotFoundException($"用户数据库文件不存在：\n{userPath}");
         }
 
-        public void LoadAll()  // 不需要参数
+        public void LoadAll()
         {
-            // 在加载前先验证数据库文件是否存在
             ValidateDatabaseFiles();
 
             _qingdanCategoryCache = DbHelper.LoadCategoryTreeToMemory("qingdan");
@@ -49,7 +53,7 @@ namespace 施工定额.Helper
             _dingeDetailCache = conn.Query<Dinge>("SELECT * FROM 定额_市政工程").ToList();
 
             _qingdanDetailCache = conn.Query<QingdanDetail>(
-                                        "SELECT 分类ID, 清单编码, 清单名称, 项目特征, 单位, 工程量计算规则, 工作内容 FROM 清单").ToList();
+                "SELECT 分类ID, 清单编码, 清单名称, 项目特征, 单位, 工程量计算规则, 工作内容 FROM 清单").ToList();
         }
     }
 }

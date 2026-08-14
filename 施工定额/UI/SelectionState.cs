@@ -1,18 +1,19 @@
-﻿namespace 施工定额.UI
+namespace 施工定额.UI
 {
-    // 只管"用户选中了什么"
+    /// <summary>
+    /// 管理当前选中的清单 / 定额。
+    /// 由 Form1（组合根）创建并注入，不再使用全局单例。
+    /// </summary>
     public class SelectionState
     {
-        private static readonly SelectionState _instance = new();
-        public static SelectionState Instance => _instance;
-
         private string _selectedQingdanCode = "";
         private string _selectedDingeCode = "";
         private string _selectedDingeID = "";
 
         public string SelectedQingdanCode => _selectedQingdanCode;
-        public string SelectedDingeCode => _selectedDingeCode;   // ← 检查这个
-        public string SelectedDingeID => _selectedDingeID;       // ← 检查这个
+        public string SelectedDingeCode => _selectedDingeCode;
+        public string SelectedDingeID => _selectedDingeID;
+
         public void SelectQingdan(string code)
         {
             _selectedQingdanCode = code ?? "";
@@ -28,7 +29,7 @@
             DingeSelectionChanged?.Invoke(this, (_selectedDingeCode, _selectedDingeID));
         }
 
-        public event EventHandler<string> QingdanSelectionChanged;
-        public event EventHandler<(string, string)> DingeSelectionChanged;
+        public event EventHandler<string>? QingdanSelectionChanged;
+        public event EventHandler<(string, string)>? DingeSelectionChanged;
     }
 }
