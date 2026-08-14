@@ -1,5 +1,5 @@
-﻿using Dapper;
-using System.Data.SQLite;
+using Dapper;
+using Microsoft.Data.Sqlite;
 using 施工定额.Entity;
 namespace 施工定额.Helper
 {
@@ -16,7 +16,7 @@ namespace 施工定额.Helper
             string tableName = type == "qingdan" ? "清单分类表" : "定额_市政工程分类表";
             string sql = $"SELECT 分类ID, 分类名称, 父ID FROM {tableName}";
 
-            using (var conn = new SQLiteConnection(AppConfig.SystemDbConn))
+            using (var conn = new SqliteConnection(AppConfig.SystemDbConn))
             {
                 // 1. 一次性把整张分类表拉取到内存中
                 var allItems = conn.Query<CategoryItem>(sql).ToList();
