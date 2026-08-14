@@ -11,6 +11,7 @@ namespace 施工定额.Entity
         private decimal _定额工程量;
         private decimal _定额单价;
         private decimal _定额合价;
+        private decimal _换算系数 = 1m;
 
         public decimal 定额工程量
         {
@@ -51,12 +52,29 @@ namespace 施工定额.Entity
             }
         }
 
+        /// <summary>
+        /// 清单工程量 → 定额工程量 的换算系数（默认 1）。
+        /// 运行时字段，当前版本不持久化到数据库。
+        /// </summary>
+        public decimal 换算系数
+        {
+            get => _换算系数;
+            set
+            {
+                if (_换算系数 != value)
+                {
+                    _换算系数 = value == 0 ? 1m : value;
+                    OnPropertyChanged(nameof(换算系数));
+                }
+            }
+        }
+
         public int 分类ID { get; set; }
-        public string ID号 { get; set; }
-        public string 清单编码 { get; set; }
-        public string 定额编码 { get; set; }
-        public string 定额名称 { get; set; }
-        public string 定额单位 { get; set; }
+        public string ID号 { get; set; } = "";
+        public string 清单编码 { get; set; } = "";
+        public string 定额编码 { get; set; } = "";
+        public string 定额名称 { get; set; } = "";
+        public string 定额单位 { get; set; } = "";
 
         public List<Xiaohaoliang> 消耗量列表 { get; set; } = new List<Xiaohaoliang>();
 
