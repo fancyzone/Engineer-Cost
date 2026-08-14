@@ -15,7 +15,7 @@ namespace 施工定额
 
         public List<Qingdan> LoadTree()
         {
-            string sql = @"
+            const string sql = @"
             SELECT * FROM 清单;
             SELECT * FROM 定额_市政工程;
             SELECT * FROM 消耗量;";
@@ -73,6 +73,23 @@ namespace 施工定额
                 tx.Rollback();
                 throw;
             }
+        }
+
+        public void SaveQingdanHeader(Qingdan qd)
+        {
+            using var conn = new SqliteConnection(_connStr);
+            conn.Execute(@"UPDATE 清单 SET 
+                清单名称=@清单名称, 项目特征=@项目特征, 单位=@单位,
+                工程量=@工程量, 综合单价=@综合单价, 综合合价=@综合合价
+                WHERE 清单编码=@清单编码", qd);
+        }
+
+        public void SaveXiaohaoliang(Xiaohaoliang xhl)
+        {
+            using var conn = new SqliteConnection(_connStr);
+            conn.Execute(@"UPDATE 消耗量 SET
+                含量=@含量, 数量=@数量, 市场价合计=@市场价合计
+                WHERE 定额ID=@定额ID AND 消耗量编码=@消耗量编码", xhl);
         }
 
         public void UpdateMarketPriceByCode(string 消耗量编码, decimal 新市场价)
