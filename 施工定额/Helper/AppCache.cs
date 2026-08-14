@@ -7,7 +7,6 @@ namespace 施工定额.Helper
     /// <summary>
     /// 系统库静态参考数据缓存。
     /// 实现 IAppCache；默认仍提供 Instance 便于启动阶段使用。
-    /// UI / 业务层应通过构造注入 IAppCache。
     /// </summary>
     public class AppCache : IAppCache
     {
