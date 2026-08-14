@@ -1,5 +1,5 @@
-﻿using Dapper;
-using System.Data.SQLite;
+using Dapper;
+using Microsoft.Data.Sqlite;
 using 施工定额.Entity;
 
 namespace 施工定额.Helper
@@ -45,7 +45,7 @@ namespace 施工定额.Helper
             _qingdanCategoryCache = DbHelper.LoadCategoryTreeToMemory("qingdan");
             _dingeCategoryCache = DbHelper.LoadCategoryTreeToMemory("dinge");
 
-            using var conn = new SQLiteConnection(AppConfig.SystemDbConn);
+            using var conn = new SqliteConnection(AppConfig.SystemDbConn);
             _dingeDetailCache = conn.Query<Dinge>("SELECT * FROM 定额_市政工程").ToList();
 
             _qingdanDetailCache = conn.Query<QingdanDetail>(

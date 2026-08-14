@@ -1,5 +1,5 @@
 using Dapper;
-using System.Data.SQLite;
+using Microsoft.Data.Sqlite;
 using 施工定额.Entity;
 
 namespace 施工定额
@@ -23,7 +23,7 @@ namespace 施工定额
             SELECT * FROM 定额_市政工程;
             SELECT * FROM 消耗量;";
 
-            using var conn = new SQLiteConnection(_connStr);
+            using var conn = new SqliteConnection(_connStr);
             using var multi = conn.QueryMultiple(sql);
 
             var qingdanList = multi.Read<Qingdan>().ToList();
@@ -48,7 +48,7 @@ namespace 施工定额
         /// </summary>
         public void SaveTree(Qingdan qd)
         {
-            using var conn = new SQLiteConnection(_connStr);
+            using var conn = new SqliteConnection(_connStr);
             conn.Open();
             using var tx = conn.BeginTransaction();
             try
@@ -89,7 +89,7 @@ namespace 施工定额
         /// </summary>
         public void UpdateMarketPriceByCode(string 消耗量编码, decimal 新市场价)
         {
-            using var conn = new SQLiteConnection(_connStr);
+            using var conn = new SqliteConnection(_connStr);
             conn.Execute(@"
                 UPDATE 消耗量 
                 SET 市场价 = @价格
@@ -101,7 +101,7 @@ namespace 施工定额
         /// </summary>
         public void DeleteQingdan(string qingdanCode)
         {
-            using var conn = new SQLiteConnection(_connStr);
+            using var conn = new SqliteConnection(_connStr);
             conn.Open();
             using var tx = conn.BeginTransaction();
             try
