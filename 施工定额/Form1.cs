@@ -20,6 +20,9 @@ namespace 施工定额
         private readonly SummaryPresenter _summaryPresenter;
         private readonly ContextMenuBuilder _menuBuilder;
 
+        /// <summary>刷新子表时抑制 CellValueChanged，避免事件重入。</summary>
+        private bool _suppressGridEvents;
+
         public void ReloadAndRecalculateEverything()
         {
             _qingdanPresenter.ReloadAll();
@@ -45,7 +48,7 @@ namespace 施工定额
 
             _qingdanPresenter = new QingdanPresenter(
                 _repo, _calcService, myMemoryQingdanBindingList, UpdateDisplay);
-            _summaryPresenter = new SummaryPresenter(myMemoryQingdanBindingList);
+            _summaryPresenter = new SummaryPresenter(myMemoryQingdanBindingList, _calcService);
 
             _menuBuilder = new ContextMenuBuilder(
                 _qingdanPresenter,
@@ -102,36 +105,38 @@ namespace 施工定额
 
                 case DisplayType.Dinge:
                     {
-                        DataGridView_dinge.CellValueChanged -= DataGridView_dinge_CellValueChanged;
-                        DataGridView_dinge.CellClick -= DataGridView_dinge_CellClick;
-
-                        _dingeBindingList.Clear();
-                        var currentQd = myMemoryQingdanBindingList
-                            .FirstOrDefault(q => q.清单编码 == _selection.SelectedQingdanCode);
-                        if (currentQd != null)
-                            foreach (var d in currentQd.定额列表)
-                                _dingeBindingList.Add(d);
-
-                        DataGridView_dinge.CellValueChanged += DataGridView_dinge_CellValueChanged;
-                        DataGridView_dinge.CellClick += DataGridView_dinge_CellClick;
+                        _suppressGridEvents = true;
+                        try
+                        {
+                            var currentQd = myMemoryQingdanBindingList
+                                .FirstOrDefault(q => q.清单编码 == _selection.SelectedQingdanCode);
+                            _dingeBindingList.ReplaceAll(
+                                currentQd?.定额列表 ?? Enumerable.Empty<Dinge>());
+                        }
+                        finally
+                        {
+                            _suppressGridEvents = false;
+                        }
                         break;
                     }
 
                 case DisplayType.Xiaohaoliang:
                     {
-                        dataGridView2.CellValueChanged -= dataGridView2_CellValueChanged;
-
-                        _xhlBindingList.Clear();
-                        var currentQd = myMemoryQingdanBindingList
-                            .FirstOrDefault(q => q.清单编码 == _selection.SelectedQingdanCode);
-                        var currentDg = currentQd?.定额列表.FirstOrDefault(
-                            d => d.定额编码 == _selection.SelectedDingeCode
-                              && d.ID号 == _selection.SelectedDingeID);
-                        if (currentDg != null)
-                            foreach (var x in currentDg.消耗量列表)
-                                _xhlBindingList.Add(x);
-
-                        dataGridView2.CellValueChanged += dataGridView2_CellValueChanged;
+                        _suppressGridEvents = true;
+                        try
+                        {
+                            var currentQd = myMemoryQingdanBindingList
+                                .FirstOrDefault(q => q.清单编码 == _selection.SelectedQingdanCode);
+                            var currentDg = currentQd?.定额列表.FirstOrDefault(
+                                d => d.定额编码 == _selection.SelectedDingeCode
+                                  && d.ID号 == _selection.SelectedDingeID);
+                            _xhlBindingList.ReplaceAll(
+                                currentDg?.消耗量列表 ?? Enumerable.Empty<Xiaohaoliang>());
+                        }
+                        finally
+                        {
+                            _suppressGridEvents = false;
+                        }
                         break;
                     }
             }
@@ -152,7 +157,7 @@ namespace 施工定额
 
             if (string.IsNullOrEmpty(qingdanCode))
             {
-                MessageBox.Show("当前选中的清单编码为空，无法打开定额库。");
+                ErrorHandler.ShowBusiness("当前选中的清单编码为空，无法打开定额库。");
                 return;
             }
 
@@ -161,8 +166,8 @@ namespace 施工定额
             f2.DataImported += () =>
             {
                 if (IsDisposed) return;
-                if (this.InvokeRequired)
-                    this.Invoke(new Action(ReloadAndRecalculateEverything));
+                if (InvokeRequired)
+                    Invoke(new Action(ReloadAndRecalculateEverything));
                 else
                     ReloadAndRecalculateEverything();
             };
@@ -182,21 +187,25 @@ namespace 施工定额
             string code = dataGridView1.Rows[e.RowIndex].Cells["清单编码"].Value?.ToString() ?? "";
             if (string.IsNullOrEmpty(code)) return;
 
-            string imageFolder = Path.Combine(AppContext.BaseDirectory, code);
+            // 优先 AppData 下的图片目录，其次程序目录
+            string imageFolder = Path.Combine(AppConfig.DataDirectory, "images", code);
+            if (!Directory.Exists(imageFolder))
+                imageFolder = Path.Combine(AppContext.BaseDirectory, code);
+
             if (!Directory.Exists(imageFolder))
             {
-                MessageBox.Show($"未找到图片文件夹：{imageFolder}");
+                ErrorHandler.ShowBusiness($"未找到图片文件夹：{imageFolder}");
                 return;
             }
 
             var supportedExt = new[] { ".jpg", ".jpeg", ".png", ".bmp", ".gif" };
             var imageFiles = Directory.GetFiles(imageFolder)
-                .Where(f => supportedExt.Contains(Path.GetExtension(f).ToLower()))
+                .Where(f => supportedExt.Contains(Path.GetExtension(f).ToLowerInvariant()))
                 .ToList();
 
             if (imageFiles.Count == 0)
             {
-                MessageBox.Show("该清单文件夹下没有图片。");
+                ErrorHandler.ShowBusiness("该清单文件夹下没有图片。");
                 return;
             }
 
@@ -215,12 +224,12 @@ namespace 施工定额
         private void treeView1_AfterSelect(object sender, TreeViewEventArgs e)
         {
             dataGridView3.DataSource =
-                _summaryPresenter.GetRenCaiJiSummaryFromMemory(e.Node.Text);
+                _summaryPresenter.GetRenCaiJiSummaryFromMemory(e.Node?.Text ?? "");
         }
 
         private void dataGridView2_CellValueChanged(object sender, DataGridViewCellEventArgs e)
         {
-            if (e.RowIndex < 0) return;
+            if (_suppressGridEvents || e.RowIndex < 0) return;
             dataGridView2.CommitEdit(DataGridViewDataErrorContexts.Commit);
 
             var source = dataGridView2.DataSource as BindingList<Xiaohaoliang>;
@@ -230,48 +239,54 @@ namespace 施工定额
             var colName = dataGridView2.Columns[e.ColumnIndex].Name;
             var cellValue = dataGridView2.Rows[e.RowIndex].Cells[e.ColumnIndex].Value;
 
-            switch (colName)
+            try
             {
-                case "市场价":
-                    if (decimal.TryParse(cellValue?.ToString(), out var p))
-                        _qingdanPresenter.OnMarketPriceChanged(xhl, p);
-                    return;
+                switch (colName)
+                {
+                    case "市场价":
+                        if (decimal.TryParse(cellValue?.ToString(), out var p))
+                            _qingdanPresenter.OnMarketPriceChanged(xhl, p);
+                        return;
 
-                case "含量":
-                    if (decimal.TryParse(cellValue?.ToString(), out var c))
-                        _qingdanPresenter.OnXiaohaoliangHanliangChanged(xhl, c);
-                    return;
+                    case "含量":
+                        if (decimal.TryParse(cellValue?.ToString(), out var c))
+                            _qingdanPresenter.OnXiaohaoliangHanliangChanged(xhl, c);
+                        return;
 
-                default:
-                    return;
+                    default:
+                        return;
+                }
+            }
+            catch (Exception ex)
+            {
+                ErrorHandler.Show(ex);
             }
         }
 
         private void DataGridView_dinge_CellValueChanged(object sender, DataGridViewCellEventArgs e)
         {
-            if (e.RowIndex == -1) return;
+            if (_suppressGridEvents || e.RowIndex == -1) return;
 
             DataGridView_dinge.CommitEdit(DataGridViewDataErrorContexts.Commit);
             var currentQd = myMemoryQingdanBindingList
                 .FirstOrDefault(q => q.清单编码 == _selection.SelectedQingdanCode);
             if (currentQd == null) return;
 
-            DataGridView_dinge.CellValueChanged -= DataGridView_dinge_CellValueChanged;
-
+            _suppressGridEvents = true;
             try
             {
                 _qingdanPresenter.OnDingeChanged(currentQd);
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message);
+                ErrorHandler.Show(ex);
             }
             finally
             {
-                this.BeginInvoke(new Action(() =>
+                BeginInvoke(new Action(() =>
                 {
-                    if (IsDisposed) return;
-                    DataGridView_dinge.CellValueChanged += DataGridView_dinge_CellValueChanged;
+                    if (!IsDisposed)
+                        _suppressGridEvents = false;
                 }));
             }
         }
@@ -291,36 +306,83 @@ namespace 施工定额
 
             string colName = dataGridView1.Columns[e.ColumnIndex].Name;
 
-            if (colName == "工程量")
+            try
             {
-                _qingdanPresenter.OnQingdanWorkAmountChanged(changedQd);
-                return;
-            }
+                if (colName == "工程量")
+                {
+                    _qingdanPresenter.OnQingdanWorkAmountChanged(changedQd);
+                    return;
+                }
 
-            _qingdanPresenter.SaveQingdanFields(changedQd);
+                _qingdanPresenter.SaveQingdanFields(changedQd);
+            }
+            catch (Exception ex)
+            {
+                ErrorHandler.Show(ex);
+            }
         }
 
         private void button1_Click(object sender, EventArgs e)
         {
-            IYdjcExportStrategy strategy = new HenanYdjcExportStrategy();
-            var exportService = new YdjcExportService(strategy, _calcService);
-
-            var info = new YdjcProjectInfo
+            if (myMemoryQingdanBindingList.Count == 0)
             {
-                ProjectName = "示例项目",
-                Owner = "建设单位名称",
-                CompilerName = "编制单位名称",
-                UnitWorkName = "示例单位工程",
-                Scale = "20000 m2"
+                ErrorHandler.ShowBusiness("当前没有可导出的清单数据。");
+                return;
+            }
+
+            using var infoForm = new ExportProjectInfoForm();
+            if (infoForm.ShowDialog(this) != DialogResult.OK)
+                return;
+
+            using var sfd = new SaveFileDialog
+            {
+                Title = "导出 YDJC 文件",
+                Filter = "YDJC 文件 (*.YDJC)|*.YDJC|所有文件 (*.*)|*.*",
+                FileName = $"{infoForm.ProjectName}.YDJC",
+                DefaultExt = "YDJC",
+                AddExtension = true
             };
 
-            exportService.Export(myMemoryQingdanBindingList.ToList(), info, @"D:\导出\示例项目.YDJC");
+            if (sfd.ShowDialog(this) != DialogResult.OK)
+                return;
+
+            try
+            {
+                Cursor = Cursors.WaitCursor;
+                IYdjcExportStrategy strategy = new HenanYdjcExportStrategy();
+                var exportService = new YdjcExportService(strategy, _calcService);
+
+                var info = new YdjcProjectInfo
+                {
+                    ProjectName = infoForm.ProjectName,
+                    Owner = infoForm.Owner,
+                    CompilerName = infoForm.CompilerName,
+                    UnitWorkName = infoForm.UnitWorkName,
+                    Scale = infoForm.Scale
+                };
+
+                exportService.Export(myMemoryQingdanBindingList.ToList(), info, sfd.FileName);
+                AppLogger.Info($"导出成功: {sfd.FileName}");
+                ErrorHandler.ShowBusiness($"导出成功：\n{sfd.FileName}", "导出完成");
+            }
+            catch (Exception ex)
+            {
+                ErrorHandler.Show(ex, "导出失败");
+            }
+            finally
+            {
+                Cursor = Cursors.Default;
+            }
         }
 
         private void toolStripButton1_Click(object sender, EventArgs e)
         {
             var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
-            MessageBox.Show($"当前版本：{version}\n作者：Your Name\n联系方式：");
+            MessageBox.Show(
+                $"当前版本：{version}\n作者：Fancy\n数据目录：{AppConfig.DataDirectory}",
+                "关于",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
         }
     }
 }
