@@ -33,24 +33,17 @@ namespace 施工定额
 
         public FeeRateSettings Rates => _rates;
 
-        /// <summary>
-        /// 对整个清单列表做一次全量重算
-        /// </summary>
         public void RecalculateAll(List<Qingdan> qingdanList)
         {
             foreach (var qd in qingdanList)
                 RecalculateQingdan(qd);
         }
 
-        /// <summary>
-        /// 重算单条清单（含它下属的所有定额和消耗量，以及费用构成）
-        /// </summary>
         public void RecalculateQingdan(Qingdan qd)
         {
             foreach (var dg in qd.定额列表)
                 RecalculateDinge(dg);
 
-            // 清单级费用构成 = 下属定额费用构成之和
             qd.费用构成.Reset();
             foreach (var dg in qd.定额列表)
             {
@@ -63,7 +56,6 @@ namespace 施工定额
                 qd.费用构成.不含税合价 += dg.费用构成.不含税合价;
             }
 
-            // 税金在清单级按不含税合价计征（项目汇总时也会再算一遍，保持一致）
             qd.费用构成.税金 = Math.Round(qd.费用构成.不含税合价 * _rates.VatRate, 2);
 
             qd.综合合价 = qd.费用构成.不含税合价;
@@ -72,9 +64,6 @@ namespace 施工定额
                 : 0;
         }
 
-        /// <summary>
-        /// 重算单条定额（含它下属的所有消耗量，以及费用构成）
-        /// </summary>
         public void RecalculateDinge(Dinge dg)
         {
             foreach (var xhl in dg.消耗量列表)
@@ -88,9 +77,6 @@ namespace 施工定额
                 : 0;
         }
 
-        /// <summary>
-        /// 按消耗量列表计算完整费用构成（人材机 + 取费）
-        /// </summary>
         public void ApplyFeeBreakdown(CostBreakdown breakdown, IEnumerable<Xiaohaoliang> xhlList)
         {
             breakdown.Reset();
@@ -109,7 +95,6 @@ namespace 施工定额
                         breakdown.机械费 += x.市场价合计;
                         break;
                     default:
-                        // 未知类别并入材料费，避免金额丢失
                         breakdown.材料费 += x.市场价合计;
                         break;
                 }
@@ -135,9 +120,6 @@ namespace 施工定额
             breakdown.税金 = Math.Round(breakdown.不含税合价 * _rates.VatRate, 2);
         }
 
-        /// <summary>
-        /// 项目级汇总：分部分项合价、规费、税金、含税总价
-        /// </summary>
         public ProjectCostSummary CalculateProjectSummary(IEnumerable<Qingdan> qingdanList)
         {
             var list = qingdanList.ToList();
@@ -148,7 +130,6 @@ namespace 施工定额
             decimal overhead = list.Sum(q => q.费用构成.管理费);
             decimal profit = list.Sum(q => q.费用构成.利润);
 
-            // 规费：若单价已含规费则直接汇总，否则按项目人工费重算
             decimal statutory = _rates.IncludeStatutoryInUnitPrice
                 ? list.Sum(q => q.费用构成.规费)
                 : Math.Round(labor * _rates.StatutoryFeeRate, 2);
@@ -176,22 +157,5 @@ namespace 施工定额
             xhl.数量 = xhl.含量 * dingeWorkAmount;
             xhl.市场价合计 = Math.Round(xhl.市场价 * xhl.数量, 2);
         }
-    }
-
-    /// <summary>
-    /// 项目级造价汇总结果
-    /// </summary>
-    public class ProjectCostSummary
-    {
-        public decimal 分部分项合价 { get; set; }
-        public decimal 人工费 { get; set; }
-        public decimal 材料费 { get; set; }
-        public decimal 机械费 { get; set; }
-        public decimal 管理费 { get; set; }
-        public decimal 利润 { get; set; }
-        public decimal 规费 { get; set; }
-        public decimal 税金 { get; set; }
-        public decimal 不含税总价 { get; set; }
-        public decimal 含税总价 { get; set; }
     }
 }

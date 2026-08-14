@@ -2,6 +2,7 @@ using System.Globalization;
 using System.IO.Compression;
 using System.Xml.Linq;
 using 施工定额.Entity;
+using 施工定额.Service;
 
 namespace 施工定额.Export
 {
@@ -42,7 +43,6 @@ namespace 施工定额.Export
 
         public void Export(List<Qingdan> qingdanList, YdjcProjectInfo info, string outputFilePath)
         {
-            // 导出前确保费用构成已重算
             _calcService.RecalculateAll(qingdanList);
 
             string unitWorkFileName = $"@_{Sanitize(info.UnitWorkName)}.xml";
