@@ -6,8 +6,13 @@ namespace 施工定额
 {
     internal static class Program
     {
+        /// <summary>
+        /// 必须使用同步 void Main + [STAThread]。
+        /// async Task Main 会导致入口线程不是 STA，SaveFileDialog / OpenFileDialog 等 OLE 对话框会抛 ThreadStateException。
+        /// 异步启动逻辑放在 BootstrapForm.RunBootstrap 中，由 UI 消息循环调度。
+        /// </summary>
         [STAThread]
-        static async Task Main()
+        static void Main()
         {
             Directory.CreateDirectory(AppConfig.DataDirectory);
             AppLogger.Info($"程序启动，版本 {System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}");
