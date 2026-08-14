@@ -4,7 +4,7 @@ using 施工定额.Entity;
 
 namespace 施工定额.Service
 {
-    public class ImportService
+    public class ImportService : IImportService
     {
         private readonly string _sysConn;
         private readonly string _userConn;

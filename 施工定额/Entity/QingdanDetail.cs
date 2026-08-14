@@ -1,4 +1,4 @@
-﻿namespace 施工定额.Entity
+namespace 施工定额.Entity
 {
     // 系统库里的清单参考数据（只读，无运算字段）
     public class QingdanDetail

@@ -5,18 +5,18 @@ using 施工定额.Service;
 namespace 施工定额.UI
 {
     /// <summary>
-    /// 清单相关业务编排：改价、改量、改含量、重载、保存。
+    /// 清单相关业务编排：改价、改量、改含量、重载、保存、删除。
     /// Form 只负责把 UI 事件转发给本类，不直接碰计算与持久化。
     /// </summary>
     public class QingdanPresenter
     {
-        private readonly QingdanRepository _repo;
+        private readonly IQingdanRepository _repo;
         private readonly ICostCalculationService _calcService;
         private readonly BindingList<Qingdan> _qingdanList;
         private readonly Action<DisplayType> _updateDisplay;
 
         public QingdanPresenter(
-            QingdanRepository repo,
+            IQingdanRepository repo,
             ICostCalculationService calcService,
             BindingList<Qingdan> qingdanList,
             Action<DisplayType> updateDisplay)
@@ -27,9 +27,6 @@ namespace 施工定额.UI
             _updateDisplay = updateDisplay;
         }
 
-        /// <summary>
-        /// 市场价变更：同编码材料全局同价，只重算/保存受影响清单。
-        /// </summary>
         public void OnMarketPriceChanged(Xiaohaoliang xhl, decimal newPrice)
         {
             var affectedQingdan = new List<Qingdan>();
@@ -64,9 +61,6 @@ namespace 施工定额.UI
             _updateDisplay(DisplayType.Xiaohaoliang);
         }
 
-        /// <summary>
-        /// 清单工程量变更：同步下属定额工程量后重算并保存。
-        /// </summary>
         public void OnQingdanWorkAmountChanged(Qingdan qd)
         {
             foreach (var dg in qd.定额列表)
@@ -80,9 +74,6 @@ namespace 施工定额.UI
             _updateDisplay(DisplayType.Qingdan);
         }
 
-        /// <summary>
-        /// 消耗量含量变更：只重算所属清单。
-        /// </summary>
         public void OnXiaohaoliangHanliangChanged(Xiaohaoliang xhl, decimal newHanliang)
         {
             xhl.含量 = newHanliang;
@@ -103,9 +94,6 @@ namespace 施工定额.UI
             _updateDisplay(DisplayType.Xiaohaoliang);
         }
 
-        /// <summary>
-        /// 定额层任意可编辑字段变更后：重算当前清单并保存。
-        /// </summary>
         public void OnDingeChanged(Qingdan qd)
         {
             if (qd == null) return;
@@ -118,15 +106,27 @@ namespace 施工定额.UI
             _updateDisplay(DisplayType.Xiaohaoliang);
         }
 
-        /// <summary>
-        /// 清单非工程量字段（名称、项目特征等）变更后仅持久化，不重算。
-        /// </summary>
         public void SaveQingdanFields(Qingdan qd)
         {
             if (qd == null) return;
 
             _repo.SaveTree(qd);
             _updateDisplay(DisplayType.Qingdan);
+        }
+
+        public void DeleteQingdan(string qingdanCode)
+        {
+            if (string.IsNullOrEmpty(qingdanCode)) return;
+
+            _repo.DeleteQingdan(qingdanCode);
+
+            var toRemove = _qingdanList.FirstOrDefault(q => q.清单编码 == qingdanCode);
+            if (toRemove != null)
+                _qingdanList.Remove(toRemove);
+
+            _updateDisplay(DisplayType.Qingdan);
+            _updateDisplay(DisplayType.Dinge);
+            _updateDisplay(DisplayType.Xiaohaoliang);
         }
 
         public void ReloadAll()
