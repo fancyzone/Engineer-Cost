@@ -4,20 +4,20 @@ using 施工定额.Entity;
 namespace 施工定额.UI
 {
     /// <summary>
-    /// 统一管理所有 DataGridView 的右键菜单
-    /// 每个 Build 方法负责一个表格的菜单，Form1 只调用 Build，不关心内部逻辑
+    /// 统一管理所有 DataGridView 的右键菜单。
+    /// 每个 Build 方法负责一个表格的菜单，Form1 只调用 Build，不关心内部逻辑。
     /// </summary>
     public class ContextMenuBuilder
     {
         private readonly QingdanRepository _repo;
         private readonly Func<BindingList<Qingdan>> _getQingdanList;
-        private readonly Action<Form1.DisplayType> _updateDisplay;
-        private readonly Action _reloadAll;  // ← 加这个字段
+        private readonly Action<DisplayType> _updateDisplay;
+        private readonly Action _reloadAll;
 
         public ContextMenuBuilder(
             QingdanRepository repo,
             Func<BindingList<Qingdan>> getQingdanList,
-            Action<Form1.DisplayType> updateDisplay,
+            Action<DisplayType> updateDisplay,
             Action reloadAll)
         {
             _repo = repo;
@@ -37,7 +37,6 @@ namespace 施工定额.UI
             deleteItem.Click += (_, _) => DeleteQingdan(dgv);
             menu.Items.Add(deleteItem);
 
-            // ContextMenuBuilder.cs - BuildQingdanMenu 里追加
             var newItem = new ToolStripMenuItem("新建清单");
             newItem.Click += (_, _) => CreateNewQingdan(dgv);
             menu.Items.Add(newItem);
@@ -51,16 +50,9 @@ namespace 施工定额.UI
         public ContextMenuStrip BuildDingeMenu(DataGridView dgv)
         {
             var menu = new ContextMenuStrip();
-
-            // 后续有需要再加
-            // var deleteItem = new ToolStripMenuItem("删除定额");
-            // deleteItem.Click += (_, _) => DeleteDinge(dgv);
-            // menu.Items.Add(deleteItem);
-
+            // 后续有需要再加删除定额等菜单项
             return menu;
         }
-
-        // ── 具体操作 ────────────────────────────────────────────
 
         private void DeleteQingdan(DataGridView dgv)
         {
@@ -82,7 +74,7 @@ namespace 施工定额.UI
             {
                 _repo.DeleteQingdan(code);
 
-                var list = _getQingdanList();  // ← 每次现取
+                var list = _getQingdanList();
                 var toRemove = list.FirstOrDefault(q => q.清单编码 == code);
                 if (toRemove != null)
                     list.Remove(toRemove);
@@ -90,9 +82,9 @@ namespace 施工定额.UI
                 if (SelectionState.Instance.SelectedQingdanCode == code)
                     SelectionState.Instance.SelectQingdan("");
 
-                _updateDisplay(Form1.DisplayType.Qingdan);
-                _updateDisplay(Form1.DisplayType.Dinge);
-                _updateDisplay(Form1.DisplayType.Xiaohaoliang);
+                _updateDisplay(DisplayType.Qingdan);
+                _updateDisplay(DisplayType.Dinge);
+                _updateDisplay(DisplayType.Xiaohaoliang);
             }
             catch (Exception ex)
             {
@@ -100,6 +92,7 @@ namespace 施工定额.UI
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
+
         private void CreateNewQingdan(DataGridView dgv)
         {
             var f2 = new Form2("");

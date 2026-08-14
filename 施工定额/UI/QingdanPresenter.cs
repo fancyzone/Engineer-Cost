@@ -1,21 +1,25 @@
 using System.ComponentModel;
 using 施工定额.Entity;
+using 施工定额.Service;
 
 namespace 施工定额.UI
 {
-    // 新建 施工定额/UI/QingdanPresenter.cs
+    /// <summary>
+    /// 清单相关业务编排：改价、改量、改含量、重载、保存。
+    /// Form 只负责把 UI 事件转发给本类，不直接碰计算与持久化。
+    /// </summary>
     public class QingdanPresenter
     {
         private readonly QingdanRepository _repo;
-        private readonly CostCalculationService _calcService;
+        private readonly ICostCalculationService _calcService;
         private readonly BindingList<Qingdan> _qingdanList;
-        private readonly Action<Form1.DisplayType> _updateDisplay;
+        private readonly Action<DisplayType> _updateDisplay;
 
         public QingdanPresenter(
             QingdanRepository repo,
-            CostCalculationService calcService,
+            ICostCalculationService calcService,
             BindingList<Qingdan> qingdanList,
-            Action<Form1.DisplayType> updateDisplay)
+            Action<DisplayType> updateDisplay)
         {
             _repo = repo;
             _calcService = calcService;
@@ -23,10 +27,11 @@ namespace 施工定额.UI
             _updateDisplay = updateDisplay;
         }
 
-        // 原来散落在 Form1 各事件里的逻辑，集中到这里
+        /// <summary>
+        /// 市场价变更：同编码材料全局同价，只重算/保存受影响清单。
+        /// </summary>
         public void OnMarketPriceChanged(Xiaohaoliang xhl, decimal newPrice)
         {
-            // 1. 同步内存里所有同编码材料的市场价，并收集真正受影响的清单
             var affectedQingdan = new List<Qingdan>();
             foreach (var qd in _qingdanList)
             {
@@ -46,22 +51,22 @@ namespace 施工定额.UI
                     affectedQingdan.Add(qd);
             }
 
-            // 2. 写库：按编码全局更新市场价（跨清单同价语义）
             _repo.UpdateMarketPriceByCode(xhl.消耗量编码, newPrice);
 
-            // 3. 只重算并保存受影响的清单（避免全量 SaveTree）
             foreach (var qd in affectedQingdan)
             {
                 _calcService.RecalculateQingdan(qd);
                 _repo.SaveTree(qd);
             }
 
-            // 4. 刷新界面（清单合价变化；当前定额/消耗量合计也可能变化）
-            _updateDisplay(Form1.DisplayType.Qingdan);
-            _updateDisplay(Form1.DisplayType.Dinge);
-            _updateDisplay(Form1.DisplayType.Xiaohaoliang);
+            _updateDisplay(DisplayType.Qingdan);
+            _updateDisplay(DisplayType.Dinge);
+            _updateDisplay(DisplayType.Xiaohaoliang);
         }
 
+        /// <summary>
+        /// 清单工程量变更：同步下属定额工程量后重算并保存。
+        /// </summary>
         public void OnQingdanWorkAmountChanged(Qingdan qd)
         {
             foreach (var dg in qd.定额列表)
@@ -70,17 +75,18 @@ namespace 施工定额.UI
             _calcService.RecalculateQingdan(qd);
             _repo.SaveTree(qd);
 
-            _updateDisplay(Form1.DisplayType.Dinge);
-            _updateDisplay(Form1.DisplayType.Xiaohaoliang);
-            _updateDisplay(Form1.DisplayType.Qingdan);
+            _updateDisplay(DisplayType.Dinge);
+            _updateDisplay(DisplayType.Xiaohaoliang);
+            _updateDisplay(DisplayType.Qingdan);
         }
 
+        /// <summary>
+        /// 消耗量含量变更：只重算所属清单。
+        /// </summary>
         public void OnXiaohaoliangHanliangChanged(Xiaohaoliang xhl, decimal newHanliang)
         {
-            // 1. 更新内存
             xhl.含量 = newHanliang;
 
-            // 2. 只找到这条消耗量所属的清单，而不是全量
             var ownerQd = _qingdanList
                 .FirstOrDefault(q => q.定额列表
                     .Any(d => d.消耗量列表
@@ -89,17 +95,40 @@ namespace 施工定额.UI
 
             if (ownerQd == null) return;
 
-            // 3. 只重算、只保存这一条清单
             _calcService.RecalculateQingdan(ownerQd);
             _repo.SaveTree(ownerQd);
 
-            // 4. 刷新 UI
-            _updateDisplay(Form1.DisplayType.Qingdan);
-            _updateDisplay(Form1.DisplayType.Dinge);
-            _updateDisplay(Form1.DisplayType.Xiaohaoliang);
+            _updateDisplay(DisplayType.Qingdan);
+            _updateDisplay(DisplayType.Dinge);
+            _updateDisplay(DisplayType.Xiaohaoliang);
         }
 
-        // QingdanPresenter.cs
+        /// <summary>
+        /// 定额层任意可编辑字段变更后：重算当前清单并保存。
+        /// </summary>
+        public void OnDingeChanged(Qingdan qd)
+        {
+            if (qd == null) return;
+
+            _calcService.RecalculateQingdan(qd);
+            _repo.SaveTree(qd);
+
+            _updateDisplay(DisplayType.Qingdan);
+            _updateDisplay(DisplayType.Dinge);
+            _updateDisplay(DisplayType.Xiaohaoliang);
+        }
+
+        /// <summary>
+        /// 清单非工程量字段（名称、项目特征等）变更后仅持久化，不重算。
+        /// </summary>
+        public void SaveQingdanFields(Qingdan qd)
+        {
+            if (qd == null) return;
+
+            _repo.SaveTree(qd);
+            _updateDisplay(DisplayType.Qingdan);
+        }
+
         public void ReloadAll()
         {
             var freshList = _repo.LoadTree();
@@ -110,6 +139,5 @@ namespace 施工定额.UI
             foreach (var qd in freshList)
                 _qingdanList.Add(qd);
         }
-
     }
 }
