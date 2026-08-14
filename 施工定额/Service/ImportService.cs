@@ -1,5 +1,5 @@
-﻿using Dapper;
-using System.Data.SQLite;
+using Dapper;
+using Microsoft.Data.Sqlite;
 using 施工定额.Entity;
 
 namespace 施工定额.Service
@@ -24,7 +24,7 @@ namespace 施工定额.Service
             List<Dinge> sysDingeList;
             List<Xiaohaoliang> sysXhlList;
 
-            using (var conn = new SQLiteConnection(_sysConn))
+            using (var conn = new SqliteConnection(_sysConn))
             {
                 sysDingeList = conn.Query<Dinge>(
                     "SELECT * FROM 定额_市政工程 WHERE 清单编码 = @Code",
@@ -60,7 +60,7 @@ namespace 施工定额.Service
             }
 
             // 4. 写入用户库
-            using var userConn = new SQLiteConnection(_userConn);
+            using var userConn = new SqliteConnection(_userConn);
             userConn.Open();
             using var tx = userConn.BeginTransaction();
             try
@@ -108,7 +108,7 @@ namespace 施工定额.Service
         {
             // 1. 读取目标清单的工程量
             decimal qingdanWorkAmount = 0;
-            using (var conn = new SQLiteConnection(_userConn))
+            using (var conn = new SqliteConnection(_userConn))
             {
                 qingdanWorkAmount = conn.ExecuteScalar<decimal>(
                     "SELECT 工程量 FROM 清单 WHERE 清单编码 = @Code",
@@ -117,7 +117,7 @@ namespace 施工定额.Service
 
             // 2. 从系统库捞取该定额的所有消耗量
             List<Xiaohaoliang> sysXhlList;
-            using (var conn = new SQLiteConnection(_sysConn))
+            using (var conn = new SqliteConnection(_sysConn))
             {
                 sysXhlList = conn.Query<Xiaohaoliang>(
                     "SELECT * FROM 消耗量 WHERE 定额编码 = @Code",
@@ -141,7 +141,7 @@ namespace 施工定额.Service
             }
 
             // 4. 写入用户库
-            using var userConn = new SQLiteConnection(_userConn);
+            using var userConn = new SqliteConnection(_userConn);
             userConn.Open();
             using var tx = userConn.BeginTransaction();
             try
