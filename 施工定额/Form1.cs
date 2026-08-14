@@ -1,9 +1,10 @@
 using System.ComponentModel;
-using System.Data;
 using 施工定额.Entity;
 using 施工定额.Export;
 using 施工定额.Helper;
+using 施工定额.Service;
 using 施工定额.UI;
+
 namespace 施工定额
 {
     public partial class Form1 : Form
@@ -12,27 +13,21 @@ namespace 施工定额
         private BindingList<Dinge> _dingeBindingList = new BindingList<Dinge>();
         private BindingList<Xiaohaoliang> _xhlBindingList = new BindingList<Xiaohaoliang>();
 
-        // 只持有服务和仓储的引用，不直接碰数据库和计算逻辑
+        // 仓储仅用于组装依赖；计算与保存统一走 Presenter
         private readonly QingdanRepository _repo;
-        private readonly CostCalculationService _calcService;
         private readonly QingdanPresenter _qingdanPresenter;
         private readonly SummaryPresenter _summaryPresenter;
-
-        public enum DisplayType { Qingdan, Dinge, Xiaohaoliang }
         private ContextMenuBuilder _menuBuilder;
 
-        // Form1.cs
         public void ReloadAndRecalculateEverything()
         {
-            _qingdanPresenter.ReloadAll();  // 数据交给 Presenter
+            _qingdanPresenter.ReloadAll();
 
-            // UI 层自己负责：校验选中状态
             var stillExists = myMemoryQingdanBindingList.Any(
                 q => q.清单编码 == SelectionState.Instance.SelectedQingdanCode);
             if (!stillExists)
                 SelectionState.Instance.SelectQingdan("");
 
-            // UI 层自己负责：刷新显示
             UpdateDisplay(DisplayType.Qingdan);
             UpdateDisplay(DisplayType.Dinge);
             UpdateDisplay(DisplayType.Xiaohaoliang);
@@ -41,40 +36,42 @@ namespace 施工定额
         public Form1()
         {
             InitializeComponent();
+
             _repo = new QingdanRepository(AppConfig.UserDbConn);
-            _calcService = new CostCalculationService();
+            ICostCalculationService calcService = new CostCalculationService();
 
             _menuBuilder = new ContextMenuBuilder(
                 _repo,
-                () => myMemoryQingdanBindingList,  // ← lambda，调用时才求值
-                UpdateDisplay, ReloadAndRecalculateEverything);
+                () => myMemoryQingdanBindingList,
+                UpdateDisplay,
+                ReloadAndRecalculateEverything);
             dataGridView1.ContextMenuStrip = _menuBuilder.BuildQingdanMenu(dataGridView1);
-            // 后续加定额菜单：DataGridView_dinge.ContextMenuStrip = _menuBuilder.BuildDingeMenu(DataGridView_dinge);
 
-            _qingdanPresenter = new QingdanPresenter(_repo, _calcService, myMemoryQingdanBindingList, UpdateDisplay);
-            _summaryPresenter = new SummaryPresenter(myMemoryQingdanBindingList, _repo);
-            // 订阅 AppState 事件，替代原来到处读 ValueStorage 的做法
+            _qingdanPresenter = new QingdanPresenter(
+                _repo, calcService, myMemoryQingdanBindingList, UpdateDisplay);
+            _summaryPresenter = new SummaryPresenter(myMemoryQingdanBindingList);
+
             SelectionState.Instance.QingdanSelectionChanged += OnQingdanSelectionChanged;
             SelectionState.Instance.DingeSelectionChanged += OnDingeSelectionChanged;
         }
-        // 清单选中变更 → 刷新定额层 + 消耗量层
+
         private void OnQingdanSelectionChanged(object sender, string code)
         {
             UpdateDisplay(DisplayType.Dinge);
             UpdateDisplay(DisplayType.Xiaohaoliang);
         }
 
-        // 定额选中变更 → 只刷新消耗量层
         private void OnDingeSelectionChanged(object sender, (string code, string id) _)
         {
             UpdateDisplay(DisplayType.Xiaohaoliang);
         }
+
         private void Form1_Load(object sender, EventArgs e)
         {
-            // 先建列结构（只做一次）
             InitializeGridColumns();
             ReloadAndRecalculateEverything();
         }
+
         private void InitializeGridColumns()
         {
             GridManager.BindOnce(dataGridView1, myMemoryQingdanBindingList, GridColumns.Qingdan);
@@ -90,14 +87,16 @@ namespace 施工定额
             GridManager.BindOnce(DataGridView_dinge, _dingeBindingList, GridColumns.Dinge);
             GridManager.BindOnce(dataGridView2, _xhlBindingList, GridColumns.Xiaohaoliang);
         }
-        // 更新 dataGridView 的显示
+
+        /// <summary>
+        /// 纯 UI：根据当前选中状态刷新三层表格的 BindingList。
+        /// </summary>
         public void UpdateDisplay(DisplayType type)
         {
             switch (type)
             {
                 case DisplayType.Qingdan:
-                    // BindingList 已绑定，数据变化会自动通知表格
-                    // 什么都不用做，或者只做滚动定位等纯UI操作
+                    // BindingList 已绑定，属性变更会自动通知表格
                     break;
 
                 case DisplayType.Dinge:
@@ -141,17 +140,13 @@ namespace 施工定额
         {
             if (e.RowIndex == -1) return;
             string 清单编码 = dataGridView1.Rows[e.RowIndex].Cells["清单编码"].Value?.ToString() ?? "";
-            // SelectQingdan 内部会自动清空定额选中，并触发事件通知刷新
-            // 不再需要手动写三行 + 手动调 UpdateDisplay
             SelectionState.Instance.SelectQingdan(清单编码);
         }
+
         private void dataGridView1_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
         {
-            // 1. 过滤掉点击列头（RowIndex == -1）的情况
             if (e.RowIndex == -1) return;
 
-            // 2. 获取当前双击行对应的清单编码，并记录到全局存储中
-            // 假设你的 DataGridView 列名叫 "清单编码"，如果不是，请修改为实际的列名或索引（如 Cells[0]）
             string qingdanCode = dataGridView1.Rows[e.RowIndex].Cells["清单编码"].Value?.ToString() ?? "";
 
             if (string.IsNullOrEmpty(qingdanCode))
@@ -160,32 +155,24 @@ namespace 施工定额
                 return;
             }
 
-            // 3. 实例化弹窗 Form2
             Form2 f2 = new Form2(qingdanCode);
 
-            // 4. ⚡【核心：问题3优化】订阅 Form2 的数据导入成功事件
             f2.DataImported += () =>
             {
                 if (IsDisposed) return;
-                // 确保即使在复杂的异步环境下，也能安全地在主线程上刷新 UI
                 if (this.InvokeRequired)
-                {
                     this.Invoke(new Action(ReloadAndRecalculateEverything));
-                }
                 else
-                {
                     ReloadAndRecalculateEverything();
-                }
             };
 
-            // 5. 以模态对话框形式打开 Form2
-            // 使用 ShowDialog 保证用户必须处理完弹窗才能回到主界面
             f2.Show();
         }
+
         private void dataGridView1_CellValueChanged(object sender, DataGridViewCellEventArgs e)
         {
-
         }
+
         private void dataGridView1_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex < 0) return;
@@ -194,7 +181,6 @@ namespace 施工定额
             string code = dataGridView1.Rows[e.RowIndex].Cells["清单编码"].Value?.ToString() ?? "";
             if (string.IsNullOrEmpty(code)) return;
 
-            // 图片文件夹：exe 所在目录下，以清单编码为名的子文件夹
             string imageFolder = Path.Combine(AppContext.BaseDirectory, code);
             if (!Directory.Exists(imageFolder))
             {
@@ -215,20 +201,20 @@ namespace 施工定额
 
             new ImageViewerForm(code, imageFiles).Show();
         }
+
         private void tabControl1_SelectedIndexChanged(object sender, EventArgs e)
         {
             string selectedTabName = tabControl1.TabPages[tabControl1.SelectedIndex].Name;
-            if (selectedTabName == "tabRenCaiJi")//人材机汇总界面
-            {
+            if (selectedTabName == "tabRenCaiJi")
                 dataGridView3.DataSource = _summaryPresenter.GetRenCaiJiSummaryFromMemory("");
-            }
-            if (selectedTabName == "tabCostSummary")//造价汇总界面
+            if (selectedTabName == "tabCostSummary")
                 dataGridView4.DataSource = _summaryPresenter.GetCostSummaryData();
         }
+
         private void treeView1_AfterSelect(object sender, TreeViewEventArgs e)
         {
             dataGridView3.DataSource =
-                   _summaryPresenter.GetRenCaiJiSummaryFromMemory(e.Node.Text);
+                _summaryPresenter.GetRenCaiJiSummaryFromMemory(e.Node.Text);
         }
 
         private void dataGridView2_CellValueChanged(object sender, DataGridViewCellEventArgs e)
@@ -259,6 +245,7 @@ namespace 施工定额
                     return;
             }
         }
+
         private void DataGridView_dinge_CellValueChanged(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex == -1) return;
@@ -272,16 +259,8 @@ namespace 施工定额
 
             try
             {
-                _calcService.RecalculateQingdan(currentQd);
-                _repo.SaveTree(currentQd);
-
-                // ✅ 关键修复：延迟到当前事件栈结束后再刷新
-                this.BeginInvoke(new Action(() =>
-                {
-                    UpdateDisplay(DisplayType.Qingdan);
-                    UpdateDisplay(DisplayType.Dinge);
-                    UpdateDisplay(DisplayType.Xiaohaoliang);
-                }));
+                // 业务：重算 + 保存，全部交给 Presenter
+                _qingdanPresenter.OnDingeChanged(currentQd);
             }
             catch (Exception ex)
             {
@@ -289,7 +268,6 @@ namespace 施工定额
             }
             finally
             {
-                // ✅ finally 也要延迟，否则事件重挂时机不对
                 this.BeginInvoke(new Action(() =>
                 {
                     if (IsDisposed) return;
@@ -297,12 +275,12 @@ namespace 施工定额
                 }));
             }
         }
+
         private void DataGridView_dinge_CellClick(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex == -1) return;
             string 定额编码 = DataGridView_dinge.Rows[e.RowIndex].Cells["定额编码"].Value?.ToString() ?? "";
             string ID号 = DataGridView_dinge.Rows[e.RowIndex].Cells["ID号"].Value?.ToString() ?? "";
-            // SelectDinge 内部触发事件，自动刷新消耗量层
             SelectionState.Instance.SelectDinge(定额编码, ID号);
         }
 
@@ -315,14 +293,12 @@ namespace 施工定额
 
             if (colName == "工程量")
             {
-                // SaveTree 已经在 OnQingdanWorkAmountChanged 内部完成，不需要再调用
                 _qingdanPresenter.OnQingdanWorkAmountChanged(changedQd);
-                return; // ← 直接返回，避免走到下面的 SaveTree
+                return;
             }
 
-            // 修改的是清单名称、项目特征等其他字段，才在这里保存
-            _repo.SaveTree(changedQd);
-            UpdateDisplay(DisplayType.Qingdan);
+            // 名称、项目特征等非计算字段
+            _qingdanPresenter.SaveQingdanFields(changedQd);
         }
 
         private void button1_Click(object sender, EventArgs e)
