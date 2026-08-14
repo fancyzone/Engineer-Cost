@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 
 namespace 施工定额.Entity
 {
@@ -59,6 +59,11 @@ namespace 施工定额.Entity
         public string 定额单位 { get; set; }
 
         public List<Xiaohaoliang> 消耗量列表 { get; set; } = new List<Xiaohaoliang>();
+
+        /// <summary>
+        /// 运行时费用构成（人材机、管理费、利润等），不持久化到数据库。
+        /// </summary>
+        public CostBreakdown 费用构成 { get; set; } = new CostBreakdown();
 
         public override string ToString() =>
             $"{ID号} - {定额编码} - {定额名称} - {定额工程量} - {定额单价} - {定额合价}";
