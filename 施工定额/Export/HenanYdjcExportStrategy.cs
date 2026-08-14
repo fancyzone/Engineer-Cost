@@ -9,14 +9,9 @@ namespace 施工定额.Export
     /// <summary>
     /// 河南省《建设工程工程造价成果数据交换标准》（DBJ 41/T087-2024）导出策略。
     ///
-    /// 注意：这是最小可用版本。程序目前的计算引擎（CostCalculationService）
-    /// 只算到"清单综合合价 = Σ定额合价"，并不区分人工费/材料费/机械费/
-    /// 管理费/利润/规费/税金这些细项，所以：
-    ///   - 人工费/材料费/机械费：按消耗量的"消耗量类别"粗略聚合得出，
-    ///     基本能反映真实构成。
-    ///   - 管理费/利润/规费/税金：目前没有对应的计算逻辑，先输出 0，
-    ///     标记为 TODO。如果需要精确，应在 CostCalculationService 里
-    ///     补齐费率计算，而不是在导出这一层硬编。
+    /// 费用构成来自 CostCalculationService 计算的 CostBreakdown：
+    ///   - 人工费/材料费/机械费：按消耗量类别汇总
+    ///   - 管理费/利润/规费：按 FeeSettings 费率计算
     /// </summary>
     public class HenanYdjcExportStrategy : IYdjcExportStrategy
     {
@@ -26,7 +21,6 @@ namespace 施工定额.Export
 
         private const string DefaultChargeId = "CH001";
 
-        // ── 小数位数配置（对应你程序里实际使用的精度）───────────────
         public XElement BuildDecimalConfig()
         {
             return new XElement("Decimal",
@@ -41,14 +35,17 @@ namespace 施工定额.Export
                 new XAttribute("Appraisals", 2));
         }
 
-        // ── 子目单价计算程序（固定套用标准条文说明里的示例模板）──────
         public XElement BuildChargeTables()
         {
-            // 简化版：只保留人工费/材料费/机械费/管理费/利润/规费/风险费/综合单价
-            // 管理费、利润费率先固定写 0，等有真实费率数据再补
+            var rates = Helper.AppConfig.FeeRates;
+            string overheadFormula = string.Equals(rates.OverheadBase, "Labor", StringComparison.OrdinalIgnoreCase)
+                ? $"A*{rates.OverheadRate.ToString(CultureInfo.InvariantCulture)}"
+                : $"(A+B+C)*{rates.OverheadRate.ToString(CultureInfo.InvariantCulture)}";
+            string profitFormula = $"(A+B+C+E)*{rates.ProfitRate.ToString(CultureInfo.InvariantCulture)}";
+
             var charges = new XElement("Charges",
                 new XAttribute("ChargeID", DefaultChargeId),
-                new XAttribute("Name", "清单综合单价计算程序（简化版）"),
+                new XAttribute("Name", "清单综合单价计算程序"),
                 new XElement("ChargeItem",
                     new XAttribute("Name", "人工费"),
                     new XAttribute("CalcVariable", "A"),
@@ -68,15 +65,15 @@ namespace 施工定额.Export
                     new XAttribute("KindCode", "1005"),
                     new XAttribute("Decimal", 2)),
                 new XElement("ChargeItem",
-                    new XAttribute("Name", "管理费"), // TODO: 目前费率固定为 0
+                    new XAttribute("Name", "管理费"),
                     new XAttribute("CalcVariable", "E"),
-                    new XAttribute("Formula", "0"),
+                    new XAttribute("Formula", overheadFormula),
                     new XAttribute("KindCode", "1006"),
                     new XAttribute("Decimal", 2)),
                 new XElement("ChargeItem",
-                    new XAttribute("Name", "利润"), // TODO: 目前费率固定为 0
+                    new XAttribute("Name", "利润"),
                     new XAttribute("CalcVariable", "F"),
-                    new XAttribute("Formula", "0"),
+                    new XAttribute("Formula", profitFormula),
                     new XAttribute("KindCode", "1006"),
                     new XAttribute("Decimal", 2)),
                 new XElement("ChargeItem",
@@ -88,7 +85,6 @@ namespace 施工定额.Export
             return new XElement("ChargeTables", charges);
         }
 
-        // ── 清单 → ListProjects（6.5.4）─────────────────────────
         public XElement MapListProjects(Qingdan qd)
         {
             var el = new XElement("ListProjects",
@@ -98,10 +94,10 @@ namespace 施工定额.Export
                 new XAttribute("Unit", qd.单位 ?? ""),
                 new XAttribute("Quantity", D(qd.工程量)),
                 new XAttribute("Price", D(qd.综合单价)),
-                new XAttribute("CalcType", 0), // 由定额子目汇总计算得出
+                new XAttribute("CalcType", 0),
                 new XAttribute("Total", D(qd.综合合价)));
 
-            el.Add(BuildCosts(qd.定额列表.SelectMany(d => d.消耗量列表).ToList()));
+            el.Add(BuildCostsFromBreakdown(qd.费用构成));
 
             foreach (var dg in qd.定额列表)
                 el.Add(MapNorm(dg));
@@ -109,7 +105,6 @@ namespace 施工定额.Export
             return el;
         }
 
-        // ── 定额 → Norm（6.5.5）─────────────────────────────────
         public XElement MapNorm(Dinge dg)
         {
             var el = new XElement("Norm",
@@ -121,13 +116,12 @@ namespace 施工定额.Export
                 new XAttribute("Total", D(dg.定额合价)),
                 new XAttribute("ChargeID", DefaultChargeId));
 
-            el.Add(BuildCosts(dg.消耗量列表));
+            el.Add(BuildCostsFromBreakdown(dg.费用构成));
             el.Add(MapResElements(dg.消耗量列表));
 
             return el;
         }
 
-        // ── 消耗量列表 → ResElements（6.5.6）────────────────────
         public XElement MapResElements(List<Xiaohaoliang> xhlList)
         {
             var el = new XElement("ResElements");
@@ -139,13 +133,12 @@ namespace 施工定额.Export
                     new XAttribute("Quantitys", D(x.数量)),
                     new XAttribute("Price", D(x.市场价)),
                     new XAttribute("Total", D(x.市场价合计)),
-                    new XAttribute("QtType", 0), // 按消耗量计算
+                    new XAttribute("QtType", 0),
                     new XAttribute("NoCost", false)));
             }
             return el;
         }
 
-        // ── 工料机汇总明细 → ResourceItem（6.8.2）───────────────
         public XElement MapResourceItem(ResourceAggregate agg)
         {
             return new XElement("ResourceItem",
@@ -162,32 +155,21 @@ namespace 施工定额.Export
                 new XAttribute("Kind", KindOf(agg.消耗量类别)));
         }
 
-        // ── 内部辅助方法 ─────────────────────────────────────────
-
-        /// <summary>
-        /// 按标准 6.5.2 生成 Costs 元素。目前只精确拆出人工费/材料费/机械费，
-        /// 其余（管理费/利润/规费/税金等）固定为 0（TODO：待补充费率计算）。
-        /// </summary>
-        private XElement BuildCosts(List<Xiaohaoliang> xhlList)
+        private XElement BuildCostsFromBreakdown(CostBreakdown b)
         {
-            decimal labor = xhlList.Where(x => x.消耗量类别 == "人").Sum(x => x.市场价合计);
-            decimal material = xhlList.Where(x => x.消耗量类别 == "材").Sum(x => x.市场价合计);
-            decimal machine = xhlList.Where(x => x.消耗量类别 == "机").Sum(x => x.市场价合计);
-
             return new XElement("Costs",
-                new XAttribute("Labor", D(labor)),
-                new XAttribute("Material", D(material)),
+                new XAttribute("Labor", D(b.人工费)),
+                new XAttribute("Material", D(b.材料费)),
                 new XAttribute("MainMaterial", D(0)),
                 new XAttribute("Equipment", D(0)),
                 new XAttribute("MainMaterialEquipment", D(0)),
-                new XAttribute("Machine", D(machine)),
-                new XAttribute("Overhead", D(0)),   // TODO
-                new XAttribute("Profit", D(0)),     // TODO
+                new XAttribute("Machine", D(b.机械费)),
+                new XAttribute("Overhead", D(b.管理费)),
+                new XAttribute("Profit", D(b.利润)),
                 new XAttribute("Appraisal", D(0)),
                 new XAttribute("LaborQuantity", D(0)));
         }
 
-        /// <summary>消耗量类别 → 附录 A.3 工料机类型编码</summary>
         private static int KindOf(string category) => category switch
         {
             "人" => 1,
@@ -196,10 +178,6 @@ namespace 施工定额.Export
             _ => 0
         };
 
-        /// <summary>
-        /// 用消耗量编码生成稳定的 ResID（同一份导出内，同编码始终得到同一个 ID，
-        /// ResElementItem 和 ResourceItem 之间靠这个关联）。
-        /// </summary>
         public static string ResIdFor(string 消耗量编码)
         {
             消耗量编码 ??= "";
