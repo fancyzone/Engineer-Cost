@@ -14,7 +14,7 @@ namespace 施工定额
         private readonly BindingList<Xiaohaoliang> _xhlBindingList = new BindingList<Xiaohaoliang>();
 
         private readonly IQingdanRepository _repo;
-        private readonly ICostCalculationService _calcService;
+        private ICostCalculationService _calcService;
         private readonly SelectionState _selection;
         private readonly QingdanPresenter _qingdanPresenter;
         private readonly SummaryPresenter _summaryPresenter;
@@ -41,7 +41,6 @@ namespace 施工定额
         {
             InitializeComponent();
 
-            // 组合根：在此处组装依赖，Form 只持有抽象与 Presenter
             _repo = new QingdanRepository(AppConfig.UserDbConn);
             _calcService = new CostCalculationService();
             _selection = new SelectionState();
@@ -58,6 +57,43 @@ namespace 施工定额
 
             _selection.QingdanSelectionChanged += OnQingdanSelectionChanged;
             _selection.DingeSelectionChanged += OnDingeSelectionChanged;
+
+            EnsureSettingsMenu();
+        }
+
+        private void EnsureSettingsMenu()
+        {
+            foreach (ToolStripItem item in menuStrip1.Items)
+            {
+                if (item.Text == "设置")
+                    return;
+            }
+
+            var settingsMenu = new ToolStripMenuItem("设置");
+            var feeItem = new ToolStripMenuItem("费率设置(&F)...");
+            feeItem.Click += (_, _) => OpenFeeSettings();
+            settingsMenu.DropDownItems.Add(feeItem);
+            menuStrip1.Items.Add(settingsMenu);
+        }
+
+        private void OpenFeeSettings()
+        {
+            using var form = new FeeSettingsForm(AppConfig.FeeRates);
+            if (form.ShowDialog(this) != DialogResult.OK)
+                return;
+
+            try
+            {
+                AppConfig.SaveUserFeeRates(form.ResultRates);
+                _calcService = new CostCalculationService(form.ResultRates);
+                _qingdanPresenter.ReplaceCalcService(_calcService);
+                _summaryPresenter.ReplaceCalcService(_calcService);
+                ErrorHandler.ShowBusiness("费率已保存，并已按新费率重算全部清单。", "费率设置");
+            }
+            catch (Exception ex)
+            {
+                ErrorHandler.Show(ex, "保存费率失败");
+            }
         }
 
         private void OnQingdanSelectionChanged(object? sender, string code)
@@ -93,9 +129,6 @@ namespace 施工定额
             GridManager.BindOnce(dataGridView2, _xhlBindingList, GridColumns.Xiaohaoliang);
         }
 
-        /// <summary>
-        /// 纯 UI：根据当前选中状态刷新三层表格的 BindingList。
-        /// </summary>
         public void UpdateDisplay(DisplayType type)
         {
             switch (type)
@@ -187,7 +220,6 @@ namespace 施工定额
             string code = dataGridView1.Rows[e.RowIndex].Cells["清单编码"].Value?.ToString() ?? "";
             if (string.IsNullOrEmpty(code)) return;
 
-            // 优先 AppData 下的图片目录，其次程序目录
             string imageFolder = Path.Combine(AppConfig.DataDirectory, "images", code);
             if (!Directory.Exists(imageFolder))
                 imageFolder = Path.Combine(AppContext.BaseDirectory, code);
@@ -336,55 +368,7 @@ namespace 施工定额
 
         private void button1_Click(object sender, EventArgs e)
         {
-            if (myMemoryQingdanBindingList.Count == 0)
-            {
-                ErrorHandler.ShowBusiness("当前没有可导出的清单数据。");
-                return;
-            }
-
-            using var infoForm = new ExportProjectInfoForm();
-            if (infoForm.ShowDialog(this) != DialogResult.OK)
-                return;
-
-            using var sfd = new SaveFileDialog
-            {
-                Title = "导出 YDJC 文件",
-                Filter = "YDJC 文件 (*.YDJC)|*.YDJC|所有文件 (*.*)|*.*",
-                FileName = $"{infoForm.ProjectName}.YDJC",
-                DefaultExt = "YDJC",
-                AddExtension = true
-            };
-
-            if (sfd.ShowDialog(this) != DialogResult.OK)
-                return;
-
-            try
-            {
-                Cursor = Cursors.WaitCursor;
-                IYdjcExportStrategy strategy = new HenanYdjcExportStrategy();
-                var exportService = new YdjcExportService(strategy, _calcService);
-
-                var info = new YdjcProjectInfo
-                {
-                    ProjectName = infoForm.ProjectName,
-                    Owner = infoForm.Owner,
-                    CompilerName = infoForm.CompilerName,
-                    UnitWorkName = infoForm.UnitWorkName,
-                    Scale = infoForm.Scale
-                };
-
-                exportService.Export(myMemoryQingdanBindingList.ToList(), info, sfd.FileName);
-                AppLogger.Info($"导出成功: {sfd.FileName}");
-                ErrorHandler.ShowBusiness($"导出成功：\n{sfd.FileName}", "导出完成");
-            }
-            catch (Exception ex)
-            {
-                ErrorHandler.Show(ex, "导出失败");
-            }
-            finally
-            {
-                Cursor = Cursors.Default;
-            }
+            ExportCoordinator.ExportYdjc(this, myMemoryQingdanBindingList, _calcService);
         }
 
         private void toolStripButton1_Click(object sender, EventArgs e)
