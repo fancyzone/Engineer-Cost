@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.Reflection;
 
 namespace 施工定额.UI
@@ -67,24 +67,23 @@ namespace 施工定额.UI
         }
     }
 
-
     public static class GridColumns
     {
         // 清单表的列
         public static List<ColumnConfig> Qingdan => new List<ColumnConfig>
-    {
-        new() { FieldName = "清单编码", HeaderText = "清单编码", Width = 120, ReadOnly = false },
-        new() { FieldName = "清单名称", HeaderText = "清单名称", Width = 200, ReadOnly = false },
-        new() { FieldName = "项目特征", HeaderText = "项目特征", Width = 400, ReadOnly = false, WrapMode = true },
-        new() { FieldName = "单位",     HeaderText = "单位",     Width = 70 },
-        new() { FieldName = "工程量",   HeaderText = "工程量",   Width = 100,
+        {
+        new() { FieldName = "清单编码",   HeaderText = "清单编码",   Width = 120 },
+        new() { FieldName = "清单名称",   HeaderText = "清单名称",   Width = 200 },
+        new() { FieldName = "项目特征",   HeaderText = "项目特征",   Width = 250, WrapMode = true },
+        new() { FieldName = "单位",       HeaderText = "单位",       Width = 60  },
+        new() { FieldName = "工程量",     HeaderText = "工程量",     Width = 100,
                 ReadOnly = false,
-                Format = "N3",
+                Format = "N4",
                 Alignment = DataGridViewContentAlignment.MiddleRight },
-        new() { FieldName = "综合单价", HeaderText = "综合单价", Width = 120,
+        new() { FieldName = "综合单价",   HeaderText = "综合单价",   Width = 100,
                 Format = "N2",
                 Alignment = DataGridViewContentAlignment.MiddleRight },
-        new() { FieldName = "综合合价", HeaderText = "综合合价", Width = 120,
+        new() { FieldName = "综合合价",   HeaderText = "综合合价",   Width = 120,
                 Format = "N2",
                 Alignment = DataGridViewContentAlignment.MiddleRight },
     };
@@ -96,6 +95,10 @@ namespace 施工定额.UI
         new() { FieldName = "定额编码",   HeaderText = "定额编码",   Width = 120 },
         new() { FieldName = "定额名称",   HeaderText = "定额名称",   Width = 200 },
         new() { FieldName = "定额单位",   HeaderText = "单位",       Width = 60  },
+        new() { FieldName = "换算系数",   HeaderText = "换算系数",   Width = 80,
+                ReadOnly = false,
+                Format = "N4",
+                Alignment = DataGridViewContentAlignment.MiddleRight },
         new() { FieldName = "定额工程量", HeaderText = "工程量",     Width = 100,
                 ReadOnly = false,
                 Format = "N4",
