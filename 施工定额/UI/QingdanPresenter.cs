@@ -12,11 +12,10 @@ namespace 施工定额.UI
     public class QingdanPresenter
     {
         private readonly IQingdanRepository _repo;
-        private readonly ICostCalculationService _calcService;
+        private ICostCalculationService _calcService;
         private readonly BindingList<Qingdan> _qingdanList;
         private readonly Action<DisplayType> _updateDisplay;
 
-        /// <summary>消耗量编码 → 内存中所有同编码消耗量实例（加速全局改价）</summary>
         private Dictionary<string, List<Xiaohaoliang>> _xhlByCode = new(StringComparer.Ordinal);
 
         public QingdanPresenter(
@@ -31,12 +30,29 @@ namespace 施工定额.UI
             _updateDisplay = updateDisplay;
         }
 
+        public void ReplaceCalcService(ICostCalculationService calcService)
+        {
+            _calcService = calcService ?? throw new ArgumentNullException(nameof(calcService));
+            foreach (var qd in _qingdanList)
+            {
+                _calcService.RecalculateQingdan(qd);
+                PersistQingdanFine(qd);
+            }
+            RefreshAll();
+        }
+
         public void OnMarketPriceChanged(Xiaohaoliang xhl, decimal newPrice)
         {
             var code = xhl.消耗量编码 ?? "";
             var affectedQingdan = new HashSet<Qingdan>();
 
-            if (_xhlByCode.TryGetValue(code, out var list))
+            if (!_xhlByCode.TryGetValue(code, out var list))
+            {
+                RebuildIndex();
+                _xhlByCode.TryGetValue(code, out list);
+            }
+
+            if (list != null)
             {
                 foreach (var x in list)
                 {
@@ -46,27 +62,13 @@ namespace 施工定额.UI
                         affectedQingdan.Add(owner);
                 }
             }
-            else
-            {
-                RebuildIndex();
-                if (_xhlByCode.TryGetValue(code, out list))
-                {
-                    foreach (var x in list)
-                    {
-                        x.市场价 = newPrice;
-                        var owner = FindOwnerQingdan(x);
-                        if (owner != null)
-                            affectedQingdan.Add(owner);
-                    }
-                }
-            }
 
             _repo.UpdateMarketPriceByCode(code, newPrice);
 
             foreach (var qd in affectedQingdan)
             {
                 _calcService.RecalculateQingdan(qd);
-                _repo.SaveTree(qd);
+                PersistQingdanFine(qd);
             }
 
             RefreshAll();
@@ -81,7 +83,7 @@ namespace 施工定额.UI
             }
 
             _calcService.RecalculateQingdan(qd);
-            _repo.SaveTree(qd);
+            PersistQingdanFine(qd);
             RefreshAll();
         }
 
@@ -92,7 +94,7 @@ namespace 施工定额.UI
             if (ownerQd == null) return;
 
             _calcService.RecalculateQingdan(ownerQd);
-            _repo.SaveTree(ownerQd);
+            PersistQingdanFine(ownerQd);
             RefreshAll();
         }
 
@@ -100,11 +102,10 @@ namespace 施工定额.UI
         {
             if (qd == null) return;
             _calcService.RecalculateQingdan(qd);
-            _repo.SaveTree(qd);
+            PersistQingdanFine(qd);
             RefreshAll();
         }
 
-        /// <summary>换算系数变更：按清单工程量重算该定额工程量后保存。</summary>
         public void OnDingeConversionFactorChanged(Qingdan qd, Dinge dg)
         {
             if (qd == null || dg == null) return;
@@ -141,6 +142,13 @@ namespace 施工定额.UI
 
             _qingdanList.ReplaceAll(freshList);
             RebuildIndex();
+        }
+
+        private void PersistQingdanFine(Qingdan qd)
+        {
+            _repo.SaveQingdanHeader(qd);
+            foreach (var dg in qd.定额列表)
+                _repo.SaveDinge(dg);
         }
 
         private void RefreshAll()
