@@ -36,6 +36,12 @@ namespace 施工定额
             foreach (var qd in qingdanList)
                 qd.定额列表 = dingeLookup[qd.清单编码].ToList();
 
+            foreach (var dg in dingeList)
+            {
+                if (dg.换算系数 == 0)
+                    dg.换算系数 = 1m;
+            }
+
             return qingdanList;
         }
 
@@ -55,7 +61,8 @@ namespace 施工定额
                 {
                     conn.Execute(@"UPDATE 定额_市政工程 SET
                     定额名称=@定额名称, 定额单位=@定额单位,
-                    定额工程量=@定额工程量, 定额单价=@定额单价, 定额合价=@定额合价
+                    定额工程量=@定额工程量, 定额单价=@定额单价, 定额合价=@定额合价,
+                    换算系数=@换算系数
                     WHERE 定额编码=@定额编码 AND 清单编码=@清单编码 AND ID号=@ID号",
                         dg, tx);
 
