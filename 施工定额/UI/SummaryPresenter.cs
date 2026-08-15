@@ -11,12 +11,17 @@ namespace 施工定额.UI
     public class SummaryPresenter
     {
         private readonly BindingList<Qingdan> _qingdanList;
-        private readonly ICostCalculationService _calcService;
+        private ICostCalculationService _calcService;
 
         public SummaryPresenter(BindingList<Qingdan> qingdanList, ICostCalculationService calcService)
         {
             _qingdanList = qingdanList;
             _calcService = calcService;
+        }
+
+        public void ReplaceCalcService(ICostCalculationService calcService)
+        {
+            _calcService = calcService ?? throw new ArgumentNullException(nameof(calcService));
         }
 
         public object GetCostSummaryData()

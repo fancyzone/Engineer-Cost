@@ -17,6 +17,9 @@ namespace 施工定额
         /// <summary>仅更新清单头字段（名称、特征、工程量、合价等），不写定额/消耗量</summary>
         void SaveQingdanHeader(Qingdan qd);
 
+        /// <summary>保存单条定额及其下属消耗量（UPSERT）</summary>
+        void SaveDinge(Dinge dg);
+
         /// <summary>仅更新单条消耗量的含量与数量合计</summary>
         void SaveXiaohaoliang(Xiaohaoliang xhl);
 
