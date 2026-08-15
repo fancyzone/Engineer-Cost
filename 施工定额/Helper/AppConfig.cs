@@ -49,24 +49,73 @@ namespace 施工定额.Helper
             return _feeRates;
         }
 
+        /// <summary>
+        /// 将费率写入用户目录 fee_settings.json（不改程序目录 appsettings.json）。
+        /// </summary>
+        public static void SaveUserFeeRates(FeeRateSettings rates)
+        {
+            if (rates == null) throw new ArgumentNullException(nameof(rates));
+            var path = Path.Combine(DataDirectory, "fee_settings.json");
+            var json = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                rates.OverheadBase,
+                rates.OverheadRate,
+                rates.ProfitRate,
+                rates.StatutoryFeeRate,
+                rates.VatRate,
+                rates.IncludeStatutoryInUnitPrice
+            }, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(path, json);
+            _feeRates = rates;
+        }
+
         private static FeeRateSettings LoadFeeRates()
         {
             var settings = new FeeRateSettings();
             var section = _config.GetSection("FeeSettings");
-            if (!section.Exists())
-                return settings;
+            if (section.Exists())
+            {
+                settings.OverheadBase = section["OverheadBase"] ?? settings.OverheadBase;
+                if (decimal.TryParse(section["OverheadRate"], out var overhead))
+                    settings.OverheadRate = overhead;
+                if (decimal.TryParse(section["ProfitRate"], out var profit))
+                    settings.ProfitRate = profit;
+                if (decimal.TryParse(section["StatutoryFeeRate"], out var statutory))
+                    settings.StatutoryFeeRate = statutory;
+                if (decimal.TryParse(section["VatRate"], out var vat))
+                    settings.VatRate = vat;
+                if (bool.TryParse(section["IncludeStatutoryInUnitPrice"], out var include))
+                    settings.IncludeStatutoryInUnitPrice = include;
+            }
 
-            settings.OverheadBase = section["OverheadBase"] ?? settings.OverheadBase;
-            if (decimal.TryParse(section["OverheadRate"], out var overhead))
-                settings.OverheadRate = overhead;
-            if (decimal.TryParse(section["ProfitRate"], out var profit))
-                settings.ProfitRate = profit;
-            if (decimal.TryParse(section["StatutoryFeeRate"], out var statutory))
-                settings.StatutoryFeeRate = statutory;
-            if (decimal.TryParse(section["VatRate"], out var vat))
-                settings.VatRate = vat;
-            if (bool.TryParse(section["IncludeStatutoryInUnitPrice"], out var include))
-                settings.IncludeStatutoryInUnitPrice = include;
+            try
+            {
+                var userPath = Path.Combine(DataDirectory, "fee_settings.json");
+                if (File.Exists(userPath))
+                {
+                    var json = File.ReadAllText(userPath);
+                    var doc = System.Text.Json.JsonDocument.Parse(json);
+                    var root = doc.RootElement;
+                    if (root.TryGetProperty("OverheadBase", out var ob) && ob.GetString() is string s && !string.IsNullOrEmpty(s))
+                        settings.OverheadBase = s;
+                    if (root.TryGetProperty("OverheadRate", out var ohr) && ohr.TryGetDecimal(out var ohv))
+                        settings.OverheadRate = ohv;
+                    if (root.TryGetProperty("ProfitRate", out var pr) && pr.TryGetDecimal(out var prv))
+                        settings.ProfitRate = prv;
+                    if (root.TryGetProperty("StatutoryFeeRate", out var sr) && sr.TryGetDecimal(out var srv))
+                        settings.StatutoryFeeRate = srv;
+                    if (root.TryGetProperty("VatRate", out var vr) && vr.TryGetDecimal(out var vrv))
+                        settings.VatRate = vrv;
+                    if (root.TryGetProperty("IncludeStatutoryInUnitPrice", out var ir) &&
+                        (ir.ValueKind == System.Text.Json.JsonValueKind.True || ir.ValueKind == System.Text.Json.JsonValueKind.False))
+                        settings.IncludeStatutoryInUnitPrice = ir.GetBoolean();
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Error("读取用户费率配置失败", ex);
+            }
+
             return settings;
         }
 
@@ -79,10 +128,6 @@ namespace 施工定额.Helper
             return builder["Data Source"]?.ToString() ?? "";
         }
 
-        /// <summary>
-        /// 确保 AppData 下用户库存在且具备必要表结构。
-        /// 优先从程序目录复制模板；若仍无表则本地建表（空工程）。
-        /// </summary>
         private static void EnsureUserDatabase()
         {
             var userPath = Path.Combine(DataDirectory, "userDB.db");
@@ -105,9 +150,7 @@ namespace 施工定额.Helper
                     AppLogger.Info($"已创建空用户库表结构：{userPath}");
                 }
 
-                // 已有库补列（换算系数等）
                 UserDbMigrator.Apply(userPath);
-                // 按天备份
                 UserDbBackup.BackupIfNeeded(userPath);
             }
             catch (Exception ex)
