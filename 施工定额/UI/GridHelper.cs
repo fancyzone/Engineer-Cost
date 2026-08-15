@@ -118,6 +118,7 @@ namespace 施工定额.UI
         new() { FieldName = "消耗量名称", HeaderText = "名称",   Width = 200 },
         new() { FieldName = "消耗量单位", HeaderText = "单位",   Width = 60  },
         new() { FieldName = "含量",       HeaderText = "含量",   Width = 80,
+                ReadOnly = false,   // 与 Form1 CellValueChanged 中「含量」编辑一致
                 Format = "N4",
                 Alignment = DataGridViewContentAlignment.MiddleRight },
         new() { FieldName = "数量",       HeaderText = "数量",   Width = 80,
