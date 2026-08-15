@@ -84,38 +84,28 @@ namespace 施工定额
 
         private void Form2_Load(object sender, EventArgs e)
         {
-            try
-            {
-                LoadAndDisplayQingdanTree();
-                LoadAndDisplayDingeTree();
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"加载分类失败：{ex.Message}");
-            }
+            LoadAndDisplayQingdanTree();
+            LoadAndDisplayDingeTree();
         }
 
-        private void comboBox2_SelectedIndexChanged(object sender, EventArgs e)
+        private void tabControl1_MouseClick(object sender, MouseEventArgs e)
         {
-            if (comboBox2.SelectedIndex == 0)
-            {
-                treeView1.Visible = true;
-                treeView2.Visible = false;
-                dataGridView1.Visible = true;
-                dataGridView2.Visible = false;
-            }
-            else
-            {
-                treeView1.Visible = false;
-                treeView2.Visible = true;
-                dataGridView1.Visible = false;
-                dataGridView2.Visible = true;
-            }
+        }
+
+        private void tabControl1_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            int selectedIndex = tabControl1.SelectedIndex;
+
+            if (selectedIndex == 0 && treeView1.Nodes.Count == 0)
+                LoadAndDisplayQingdanTree();
+            else if (selectedIndex == 1 && treeView2.Nodes.Count == 0)
+                LoadAndDisplayDingeTree();
         }
 
         private void dataGridView1_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex == -1) return;
+
             string code = dataGridView1.Rows[e.RowIndex].Cells["清单编码"].Value?.ToString() ?? "";
             string name = dataGridView1.Rows[e.RowIndex].Cells["清单名称"].Value?.ToString() ?? "";
             string feature = dataGridView1.Rows[e.RowIndex].Cells["项目特征"].Value?.ToString() ?? "";
