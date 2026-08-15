@@ -275,7 +275,19 @@ namespace 施工定额
             _suppressGridEvents = true;
             try
             {
-                _qingdanPresenter.OnDingeChanged(currentQd);
+                var colName = DataGridView_dinge.Columns[e.ColumnIndex].Name;
+                if (colName == "换算系数")
+                {
+                    var dg = _dingeBindingList.ElementAtOrDefault(e.RowIndex);
+                    if (dg != null)
+                        _qingdanPresenter.OnDingeConversionFactorChanged(currentQd, dg);
+                    else
+                        _qingdanPresenter.OnDingeChanged(currentQd);
+                }
+                else
+                {
+                    _qingdanPresenter.OnDingeChanged(currentQd);
+                }
             }
             catch (Exception ex)
             {

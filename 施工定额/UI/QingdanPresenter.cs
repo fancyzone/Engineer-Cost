@@ -104,6 +104,15 @@ namespace 施工定额.UI
             RefreshAll();
         }
 
+        /// <summary>换算系数变更：按清单工程量重算该定额工程量后保存。</summary>
+        public void OnDingeConversionFactorChanged(Qingdan qd, Dinge dg)
+        {
+            if (qd == null || dg == null) return;
+            var factor = dg.换算系数 == 0 ? 1m : dg.换算系数;
+            dg.定额工程量 = qd.工程量 * factor;
+            OnDingeChanged(qd);
+        }
+
         public void SaveQingdanFields(Qingdan qd)
         {
             if (qd == null) return;

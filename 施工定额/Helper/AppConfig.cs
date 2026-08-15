@@ -104,6 +104,11 @@ namespace 施工定额.Helper
                     CreateUserSchema(userPath);
                     AppLogger.Info($"已创建空用户库表结构：{userPath}");
                 }
+
+                // 已有库补列（换算系数等）
+                UserDbMigrator.Apply(userPath);
+                // 按天备份
+                UserDbBackup.BackupIfNeeded(userPath);
             }
             catch (Exception ex)
             {
@@ -177,6 +182,7 @@ CREATE TABLE IF NOT EXISTS ""定额_市政工程"" (
 	""定额工程量""	REAL,
 	""定额单价""	REAL,
 	""定额合价""	REAL,
+	""换算系数""	REAL NOT NULL DEFAULT 1,
 	""Level""	TEXT
 );
 
