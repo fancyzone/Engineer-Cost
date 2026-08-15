@@ -112,8 +112,15 @@ namespace 施工定额
             string unit = dataGridView1.Rows[e.RowIndex].Cells["单位"].Value?.ToString() ?? "";
             if (string.IsNullOrEmpty(code)) return;
 
-            try { _importService.ImportQingdan(code, name, feature, unit); }
-            catch (Exception ex) { MessageBox.Show($"导入失败：{ex.Message}"); return; }
+            try
+            {
+                _importService.ImportQingdan(code, name, feature, unit);
+            }
+            catch (Exception ex)
+            {
+                ErrorHandler.Show(ex, "导入清单失败");
+                return;
+            }
 
             DataImported?.Invoke();
             this.Close();
@@ -132,12 +139,8 @@ namespace 施工定额
                 return;
             }
 
-            var idSet = new HashSet<int>(ids);
-            var filteredList = _cache.QingdanDetails
-                .Where(q => idSet.Contains(q.分类ID))
-                .ToList();
-
-            dataGridView1.DataSource = filteredList;
+            // 按分类懒加载清单参考明细（不再启动时全表进内存）
+            dataGridView1.DataSource = _cache.GetQingdanDetailsByCategoryIds(ids).ToList();
         }
 
         private void dataGridView2_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
@@ -145,7 +148,7 @@ namespace 施工定额
             if (e.RowIndex == -1) return;
             if (string.IsNullOrEmpty(_targetQingdanCode))
             {
-                MessageBox.Show("请先选择一条清单，再导入定额。");
+                ErrorHandler.ShowBusiness("请先选择一条清单，再导入定额。");
                 return;
             }
             string sysId = dataGridView2.Rows[e.RowIndex].Cells["ID号"].Value?.ToString() ?? "";
@@ -153,8 +156,15 @@ namespace 施工定额
             string name = dataGridView2.Rows[e.RowIndex].Cells["定额名称"].Value?.ToString() ?? "";
             string unit = dataGridView2.Rows[e.RowIndex].Cells["定额单位"].Value?.ToString() ?? "";
 
-            try { _importService.ImportDinge(_targetQingdanCode, sysId, code, name, unit); }
-            catch (Exception ex) { MessageBox.Show($"导入失败：{ex.Message}"); return; }
+            try
+            {
+                _importService.ImportDinge(_targetQingdanCode, sysId, code, name, unit);
+            }
+            catch (Exception ex)
+            {
+                ErrorHandler.Show(ex, "导入定额失败");
+                return;
+            }
 
             DataImported?.Invoke();
             this.Close();

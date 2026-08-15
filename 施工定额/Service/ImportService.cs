@@ -102,7 +102,9 @@ namespace 施工定额.Service
         }
 
         /// <summary>
-        /// 向用户库指定清单下导入一条定额（含消耗量）
+        /// 向用户库指定清单下导入一条定额（含消耗量）。
+        /// 优先按系统库定额 ID（sysId）取消耗量，避免同编码跨分类误匹配；
+        /// 若按 ID 无结果再回退到定额编码。
         /// </summary>
         public void ImportDinge(string targetQingdanCode, string sysId, string dingeCode, string name, string unit)
         {
@@ -115,17 +117,29 @@ namespace 施工定额.Service
                     new { Code = targetQingdanCode });
             }
 
-            // 2. 从系统库捞取该定额的所有消耗量
+            // 2. 从系统库捞取该定额的所有消耗量（优先 定额ID，回退 定额编码）
             List<Xiaohaoliang> sysXhlList;
             using (var conn = new SqliteConnection(_sysConn))
             {
-                sysXhlList = conn.Query<Xiaohaoliang>(
-                    "SELECT * FROM 消耗量 WHERE 定额编码 = @Code",
-                    new { Code = dingeCode }).ToList();
+                sysXhlList = new List<Xiaohaoliang>();
+                if (!string.IsNullOrEmpty(sysId))
+                {
+                    sysXhlList = conn.Query<Xiaohaoliang>(
+                        "SELECT * FROM 消耗量 WHERE 定额ID = @Id",
+                        new { Id = sysId }).ToList();
+                }
+
+                if (sysXhlList.Count == 0 && !string.IsNullOrEmpty(dingeCode))
+                {
+                    sysXhlList = conn.Query<Xiaohaoliang>(
+                        "SELECT * FROM 消耗量 WHERE 定额编码 = @Code",
+                        new { Code = dingeCode }).ToList();
+                }
             }
 
             if (sysXhlList.Count == 0)
-                throw new InvalidOperationException($"定额 [{dingeCode}] 在系统库中未找到消耗量明细。");
+                throw new InvalidOperationException(
+                    $"定额 [{dingeCode}]（系统ID={sysId}）在系统库中未找到消耗量明细。");
 
             // 3. 生成新的隔离 GUID
             string newId = Guid.NewGuid().ToString();
