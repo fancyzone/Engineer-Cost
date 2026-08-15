@@ -47,6 +47,7 @@ namespace 施工定额.Service
                 dg.定额工程量 = 0;
                 dg.定额单价 = 0;
                 dg.定额合价 = 0;
+                dg.换算系数 = 1m;
             }
 
             // 3. 消耗量的 ID号 换成对应的新 GUID
@@ -76,9 +77,9 @@ namespace 施工定额.Service
                 if (sysDingeList.Count > 0)
                     userConn.Execute(@"
                         INSERT INTO 定额_市政工程
-                            (ID号, 清单编码, 定额编码, 定额名称, 定额单位, 定额工程量, 定额单价, 定额合价)
+                            (ID号, 清单编码, 定额编码, 定额名称, 定额单位, 定额工程量, 定额单价, 定额合价, 换算系数)
                         VALUES
-                            (@ID号, @清单编码, @定额编码, @定额名称, @定额单位, @定额工程量, @定额单价, @定额合价)",
+                            (@ID号, @清单编码, @定额编码, @定额名称, @定额单位, @定额工程量, @定额单价, @定额合价, @换算系数)",
                         sysDingeList, tx);
 
                 if (sysXhlList.Count > 0)
@@ -101,13 +102,12 @@ namespace 施工定额.Service
         }
 
         /// <summary>
-        /// 从系统库导入单条定额（连同它的消耗量）到用户库的指定清单下
+        /// 向用户库指定清单下导入一条定额（含消耗量）
         /// </summary>
-        public void ImportDinge(string targetQingdanCode, string sysId,
-                          string dingeCode, string name, string unit)
+        public void ImportDinge(string targetQingdanCode, string sysId, string dingeCode, string name, string unit)
         {
-            // 1. 读取目标清单的工程量
-            decimal qingdanWorkAmount = 0;
+            // 1. 读取目标清单当前工程量
+            decimal qingdanWorkAmount;
             using (var conn = new SqliteConnection(_userConn))
             {
                 qingdanWorkAmount = conn.ExecuteScalar<decimal>(
@@ -148,9 +148,9 @@ namespace 施工定额.Service
             {
                 userConn.Execute(@"
                         INSERT INTO 定额_市政工程
-                            (ID号, 清单编码, 定额编码, 定额名称, 定额单位, 定额工程量, 定额单价, 定额合价)
+                            (ID号, 清单编码, 定额编码, 定额名称, 定额单位, 定额工程量, 定额单价, 定额合价, 换算系数)
                         VALUES
-                            (@ID号, @清单编码, @定额编码, @定额名称, @定额单位, @定额工程量, 0, 0)",
+                            (@ID号, @清单编码, @定额编码, @定额名称, @定额单位, @定额工程量, 0, 0, 1)",
                     new
                     {
                         ID号 = newId,
