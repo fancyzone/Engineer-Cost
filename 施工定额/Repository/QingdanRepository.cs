@@ -36,6 +36,7 @@ namespace 施工定额
             foreach (var qd in qingdanList)
                 qd.定额列表 = dingeLookup[qd.清单编码].ToList();
 
+            // 旧库或 NULL 时换算系数可能为 0，归一为 1
             foreach (var dg in dingeList)
             {
                 if (dg.换算系数 == 0)
@@ -59,18 +60,48 @@ namespace 施工定额
 
                 foreach (var dg in qd.定额列表)
                 {
-                    conn.Execute(@"UPDATE 定额_市政工程 SET
-                    定额名称=@定额名称, 定额单位=@定额单位,
-                    定额工程量=@定额工程量, 定额单价=@定额单价, 定额合价=@定额合价,
-                    换算系数=@换算系数
-                    WHERE 定额编码=@定额编码 AND 清单编码=@清单编码 AND ID号=@ID号",
+                    // ID号 有 UNIQUE：存在则更新，不存在则插入（避免只 UPDATE 丢数据）
+                    if (dg.换算系数 == 0)
+                        dg.换算系数 = 1m;
+
+                    conn.Execute(@"
+INSERT INTO 定额_市政工程
+    (ID号, 清单编码, 定额编码, 定额名称, 定额单位, 定额工程量, 定额单价, 定额合价, 换算系数)
+VALUES
+    (@ID号, @清单编码, @定额编码, @定额名称, @定额单位, @定额工程量, @定额单价, @定额合价, @换算系数)
+ON CONFLICT(ID号) DO UPDATE SET
+    清单编码=excluded.清单编码,
+    定额编码=excluded.定额编码,
+    定额名称=excluded.定额名称,
+    定额单位=excluded.定额单位,
+    定额工程量=excluded.定额工程量,
+    定额单价=excluded.定额单价,
+    定额合价=excluded.定额合价,
+    换算系数=excluded.换算系数",
                         dg, tx);
 
                     foreach (var xhl in dg.消耗量列表)
                     {
-                        conn.Execute(@"UPDATE 消耗量 SET
-                        含量=@含量, 数量=@数量, 定额基价=@定额基价, 市场价合计=@市场价合计
-                        WHERE 定额ID=@定额ID AND 消耗量编码=@消耗量编码", xhl, tx);
+                        // 消耗量表无唯一约束：先 UPDATE，影响 0 行再 INSERT
+                        var updated = conn.Execute(@"
+UPDATE 消耗量 SET
+    含量=@含量, 数量=@数量, 定额基价=@定额基价, 市场价=@市场价, 市场价合计=@市场价合计,
+    清单编码=@清单编码, 定额编码=@定额编码, 消耗量类别=@消耗量类别,
+    消耗量名称=@消耗量名称, 规格型号=@规格型号, 消耗量单位=@消耗量单位
+WHERE 定额ID=@定额ID AND 消耗量编码=@消耗量编码",
+                            xhl, tx);
+
+                        if (updated == 0)
+                        {
+                            conn.Execute(@"
+INSERT INTO 消耗量
+    (定额ID, 清单编码, 定额编码, 消耗量类别, 消耗量编码, 消耗量名称,
+     规格型号, 消耗量单位, 含量, 数量, 定额基价, 市场价, 市场价合计)
+VALUES
+    (@定额ID, @清单编码, @定额编码, @消耗量类别, @消耗量编码, @消耗量名称,
+     @规格型号, @消耗量单位, @含量, @数量, @定额基价, @市场价, @市场价合计)",
+                                xhl, tx);
+                        }
                     }
                 }
                 tx.Commit();
@@ -94,9 +125,20 @@ namespace 施工定额
         public void SaveXiaohaoliang(Xiaohaoliang xhl)
         {
             using var conn = new SqliteConnection(_connStr);
-            conn.Execute(@"UPDATE 消耗量 SET
+            var updated = conn.Execute(@"UPDATE 消耗量 SET
                 含量=@含量, 数量=@数量, 市场价合计=@市场价合计
                 WHERE 定额ID=@定额ID AND 消耗量编码=@消耗量编码", xhl);
+            if (updated == 0)
+            {
+                conn.Execute(@"
+INSERT INTO 消耗量
+    (定额ID, 清单编码, 定额编码, 消耗量类别, 消耗量编码, 消耗量名称,
+     规格型号, 消耗量单位, 含量, 数量, 定额基价, 市场价, 市场价合计)
+VALUES
+    (@定额ID, @清单编码, @定额编码, @消耗量类别, @消耗量编码, @消耗量名称,
+     @规格型号, @消耗量单位, @含量, @数量, @定额基价, @市场价, @市场价合计)",
+                    xhl);
+            }
         }
 
         public void UpdateMarketPriceByCode(string 消耗量编码, decimal 新市场价)
