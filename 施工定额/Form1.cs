@@ -40,6 +40,7 @@ namespace 施工定额
         public Form1()
         {
             InitializeComponent();
+            ApplyCheckUpdateButtonIcon();
 
             _repo = new QingdanRepository(AppConfig.UserDbConn);
             _calcService = new CostCalculationService();
@@ -374,7 +375,7 @@ namespace 施工定额
 
         private async void toolStripButton1_Click(object sender, EventArgs e)
         {
-            // 工具栏「检查更新」：程序 + 定额库；无更新时提示已是最新
+            // 工具栏「检查更新」：仅检查程序更新；无更新时提示已是最新
             var btn = sender as ToolStripItem;
             try
             {
@@ -389,6 +390,37 @@ namespace 施工定额
                 if (btn != null)
                     btn.Enabled = true;
             }
+        }
+
+        /// <summary>为工具栏「检查更新」绘制刷新图标（不依赖外部资源文件）。</summary>
+        private void ApplyCheckUpdateButtonIcon()
+        {
+            const int size = 32;
+            var bmp = new Bitmap(size, size);
+            using (var g = Graphics.FromImage(bmp))
+            {
+                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                g.Clear(Color.Transparent);
+
+                using var pen = new Pen(Color.FromArgb(0, 120, 215), 2.5f);
+                var rect = new Rectangle(5, 5, size - 10, size - 10);
+                g.DrawArc(pen, rect, 40, 280);
+
+                using var brush = new SolidBrush(Color.FromArgb(0, 120, 215));
+                PointF[] tip =
+                {
+                    new PointF(size - 7, 8),
+                    new PointF(size - 14, 6),
+                    new PointF(size - 12, 14)
+                };
+                g.FillPolygon(brush, tip);
+            }
+
+            var old = toolStripButton1.Image;
+            toolStripButton1.Image = bmp;
+            toolStripButton1.DisplayStyle = ToolStripItemDisplayStyle.ImageAndText;
+            toolStripButton1.TextImageRelation = TextImageRelation.ImageAboveText;
+            old?.Dispose();
         }
     }
 }
