@@ -8,6 +8,9 @@ namespace 施工定额.UI
     /// <summary>
     /// 清单相关业务编排：改价、改量、改含量、重载、保存、删除。
     /// Form 只负责把 UI 事件转发给本类，不直接碰计算与持久化。
+    ///
+    /// P0：增量重算 + 定向 UI 刷新（避免每次改动全量 RefreshAll）。
+    /// P1：细粒度持久化走仓储单事务 API，并维护 O(1) 查找索引。
     /// </summary>
     public class QingdanPresenter
     {
@@ -17,6 +20,7 @@ namespace 施工定额.UI
         private readonly Action<DisplayType> _updateDisplay;
 
         private Dictionary<string, List<Xiaohaoliang>> _xhlByCode = new(StringComparer.Ordinal);
+        private Dictionary<string, Qingdan> _qingdanByDingeId = new(StringComparer.Ordinal);
 
         public QingdanPresenter(
             IQingdanRepository repo,
@@ -36,7 +40,7 @@ namespace 施工定额.UI
             foreach (var qd in _qingdanList)
             {
                 _calcService.RecalculateQingdan(qd);
-                PersistQingdanFine(qd);
+                _repo.SaveQingdan(qd);
             }
             RefreshAll();
         }
@@ -62,13 +66,20 @@ namespace 施工定额.UI
                         affectedQingdan.Add(owner);
                 }
             }
+            else
+            {
+                xhl.市场价 = newPrice;
+                var owner = FindOwnerQingdan(xhl);
+                if (owner != null)
+                    affectedQingdan.Add(owner);
+            }
 
             _repo.UpdateMarketPriceByCode(code, newPrice);
 
             foreach (var qd in affectedQingdan)
             {
                 _calcService.RecalculateQingdan(qd);
-                PersistQingdanFine(qd);
+                _repo.SaveQingdan(qd);
             }
 
             RefreshAll();
@@ -76,6 +87,8 @@ namespace 施工定额.UI
 
         public void OnQingdanWorkAmountChanged(Qingdan qd)
         {
+            if (qd == null) return;
+
             foreach (var dg in qd.定额列表)
             {
                 var factor = dg.换算系数 == 0 ? 1m : dg.换算系数;
@@ -83,8 +96,8 @@ namespace 施工定额.UI
             }
 
             _calcService.RecalculateQingdan(qd);
-            PersistQingdanFine(qd);
-            RefreshAll();
+            _repo.SaveQingdan(qd);
+            RefreshCurrentQingdan();
         }
 
         public void OnXiaohaoliangHanliangChanged(Xiaohaoliang xhl, decimal newHanliang)
@@ -94,16 +107,16 @@ namespace 施工定额.UI
             if (ownerQd == null) return;
 
             _calcService.RecalculateQingdan(ownerQd);
-            PersistQingdanFine(ownerQd);
-            RefreshAll();
+            _repo.SaveQingdan(ownerQd);
+            RefreshCurrentQingdan();
         }
 
         public void OnDingeChanged(Qingdan qd)
         {
             if (qd == null) return;
             _calcService.RecalculateQingdan(qd);
-            PersistQingdanFine(qd);
-            RefreshAll();
+            _repo.SaveQingdan(qd);
+            RefreshCurrentQingdan();
         }
 
         public void OnDingeConversionFactorChanged(Qingdan qd, Dinge dg)
@@ -144,11 +157,11 @@ namespace 施工定额.UI
             RebuildIndex();
         }
 
-        private void PersistQingdanFine(Qingdan qd)
+        private void RefreshCurrentQingdan()
         {
-            _repo.SaveQingdanHeader(qd);
-            foreach (var dg in qd.定额列表)
-                _repo.SaveDinge(dg);
+            _updateDisplay(DisplayType.Qingdan);
+            _updateDisplay(DisplayType.Dinge);
+            _updateDisplay(DisplayType.Xiaohaoliang);
         }
 
         private void RefreshAll()
@@ -161,10 +174,15 @@ namespace 施工定额.UI
         private void RebuildIndex()
         {
             _xhlByCode = new Dictionary<string, List<Xiaohaoliang>>(StringComparer.Ordinal);
+            _qingdanByDingeId = new Dictionary<string, Qingdan>(StringComparer.Ordinal);
+
             foreach (var qd in _qingdanList)
             {
                 foreach (var dg in qd.定额列表)
                 {
+                    if (!string.IsNullOrEmpty(dg.ID号))
+                        _qingdanByDingeId[dg.ID号] = qd;
+
                     foreach (var x in dg.消耗量列表)
                     {
                         var code = x.消耗量编码 ?? "";
@@ -181,6 +199,14 @@ namespace 施工定额.UI
 
         private Qingdan? FindOwnerQingdan(Xiaohaoliang xhl)
         {
+            if (xhl == null) return null;
+
+            if (!string.IsNullOrEmpty(xhl.定额ID)
+                && _qingdanByDingeId.TryGetValue(xhl.定额ID, out var byId))
+            {
+                return byId;
+            }
+
             return _qingdanList.FirstOrDefault(q =>
                 q.定额列表.Any(d =>
                     d.消耗量列表.Any(x =>
