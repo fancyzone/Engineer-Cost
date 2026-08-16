@@ -14,6 +14,12 @@ namespace 施工定额
         /// <summary>将一棵清单树持久化回数据库（事务保护）</summary>
         void SaveTree(Qingdan qd);
 
+        /// <summary>
+        /// 保存整条清单及其下属定额、消耗量（单连接单事务）。
+        /// 用于改量/改含量/改价后的细粒度落库，避免多次开关连接。
+        /// </summary>
+        void SaveQingdan(Qingdan qd);
+
         /// <summary>仅更新清单头字段（名称、特征、工程量、合价等），不写定额/消耗量</summary>
         void SaveQingdanHeader(Qingdan qd);
 
