@@ -17,17 +17,68 @@ namespace 施工定额.Helper
                 using var conn = new SqliteConnection($"Data Source={dbPath}");
                 conn.Open();
                 EnsureColumn(conn, "定额_市政工程", "换算系数", "REAL NOT NULL DEFAULT 1");
-                EnsureIndex(conn, "idx_消耗量_定额ID_编码",
-                    "CREATE INDEX IF NOT EXISTS \"idx_消耗量_定额ID_编码\" ON \"消耗量\"(\"定额ID\", \"消耗量编码\")");
                 EnsureIndex(conn, "idx_定额_清单编码",
                     "CREATE INDEX IF NOT EXISTS \"idx_定额_清单编码\" ON \"定额_市政工程\"(\"清单编码\")");
                 EnsureIndex(conn, "idx_消耗量_清单编码",
                     "CREATE INDEX IF NOT EXISTS \"idx_消耗量_清单编码\" ON \"消耗量\"(\"清单编码\")");
+                EnsureIndex(conn, "idx_消耗量_编码",
+                    "CREATE INDEX IF NOT EXISTS \"idx_消耗量_编码\" ON \"消耗量\"(\"消耗量编码\")");
+
+                // 为 ON CONFLICT(定额ID, 消耗量编码) 准备唯一索引（先去重）
+                EnsureUniqueXiaohaoliangIndex(conn);
             }
             catch (Exception ex)
             {
                 AppLogger.Error("用户库迁移失败", ex);
             }
+        }
+
+        /// <summary>
+        /// 删除 (定额ID, 消耗量编码) 重复行后创建 UNIQUE INDEX，供 UPSERT 使用。
+        /// </summary>
+        private static void EnsureUniqueXiaohaoliangIndex(SqliteConnection conn)
+        {
+            const string uniqueName = "uidx_消耗量_定额ID_编码";
+            if (IndexExists(conn, uniqueName))
+                return;
+
+            using (var dedupe = conn.CreateCommand())
+            {
+                dedupe.CommandText = @"
+DELETE FROM ""消耗量""
+WHERE rowid NOT IN (
+    SELECT MIN(rowid)
+    FROM ""消耗量""
+    WHERE ""定额ID"" IS NOT NULL AND ""消耗量编码"" IS NOT NULL
+    GROUP BY ""定额ID"", ""消耗量编码""
+)
+AND ""定额ID"" IS NOT NULL AND ""消耗量编码"" IS NOT NULL;";
+                var removed = dedupe.ExecuteNonQuery();
+                if (removed > 0)
+                    AppLogger.Info($"用户库消耗量去重删除 {removed} 行");
+            }
+
+            if (IndexExists(conn, "idx_消耗量_定额ID_编码"))
+            {
+                using var drop = conn.CreateCommand();
+                drop.CommandText = "DROP INDEX IF EXISTS \"idx_消耗量_定额ID_编码\"";
+                drop.ExecuteNonQuery();
+            }
+
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText =
+                $"CREATE UNIQUE INDEX IF NOT EXISTS \"{uniqueName}\" ON \"消耗量\"(\"定额ID\", \"消耗量编码\")";
+            cmd.ExecuteNonQuery();
+            AppLogger.Info($"用户库已创建唯一索引 {uniqueName}");
+        }
+
+        private static bool IndexExists(SqliteConnection conn, string indexName)
+        {
+            using var check = conn.CreateCommand();
+            check.CommandText =
+                "SELECT 1 FROM sqlite_master WHERE type='index' AND name=@name LIMIT 1";
+            check.Parameters.AddWithValue("@name", indexName);
+            return check.ExecuteScalar() != null;
         }
 
         private static void EnsureColumn(SqliteConnection conn, string table, string column, string typeSql)
@@ -51,12 +102,7 @@ namespace 施工定额.Helper
 
         private static void EnsureIndex(SqliteConnection conn, string indexName, string createSql)
         {
-            using var check = conn.CreateCommand();
-            check.CommandText =
-                "SELECT 1 FROM sqlite_master WHERE type='index' AND name=@name LIMIT 1";
-            check.Parameters.AddWithValue("@name", indexName);
-            var exists = check.ExecuteScalar() != null;
-            if (exists)
+            if (IndexExists(conn, indexName))
                 return;
 
             using var cmd = conn.CreateCommand();
