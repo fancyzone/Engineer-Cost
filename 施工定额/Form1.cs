@@ -218,7 +218,8 @@ namespace 施工定额
             if (dataGridView1.Columns[e.ColumnIndex].Name != "btnViewImage") return;
 
             string code = dataGridView1.Rows[e.RowIndex].Cells["清单编码"].Value?.ToString() ?? "";
-            if (string.IsNullOrEmpty(code)) return;
+            if (string.IsNullOrEmpty(code))
+                return;
 
             string imageFolder = Path.Combine(AppConfig.DataDirectory, "images", code);
             if (!Directory.Exists(imageFolder))
@@ -371,14 +372,23 @@ namespace 施工定额
             ExportCoordinator.ExportYdjc(this, myMemoryQingdanBindingList, _calcService);
         }
 
-        private void toolStripButton1_Click(object sender, EventArgs e)
+        private async void toolStripButton1_Click(object sender, EventArgs e)
         {
-            var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
-            MessageBox.Show(
-                $"当前版本：{version}\n作者：Fancy\n数据目录：{AppConfig.DataDirectory}",
-                "关于",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information);
+            // 工具栏「检查更新」：程序 + 定额库；无更新时提示已是最新
+            var btn = sender as ToolStripItem;
+            try
+            {
+                if (btn != null)
+                    btn.Enabled = false;
+                Cursor = Cursors.WaitCursor;
+                await UpdateCoordinator.CheckAllAsync(this, silentIfUpToDate: false);
+            }
+            finally
+            {
+                Cursor = Cursors.Default;
+                if (btn != null)
+                    btn.Enabled = true;
+            }
         }
     }
 }
