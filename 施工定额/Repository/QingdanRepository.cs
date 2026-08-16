@@ -45,8 +45,12 @@ namespace 施工定额
             return qingdanList;
         }
 
-        public void SaveTree(Qingdan qd)
+        public void SaveTree(Qingdan qd) => SaveQingdan(qd);
+
+        public void SaveQingdan(Qingdan qd)
         {
+            if (qd == null) return;
+
             using var conn = new SqliteConnection(_connStr);
             conn.Open();
             using var tx = conn.BeginTransaction();
@@ -176,25 +180,26 @@ ON CONFLICT(ID号) DO UPDATE SET
 
         private static void UpsertXiaohaoliang(SqliteConnection conn, Xiaohaoliang xhl, SqliteTransaction tx)
         {
-            var updated = conn.Execute(@"
-UPDATE 消耗量 SET
-    含量=@含量, 数量=@数量, 定额基价=@定额基价, 市场价=@市场价, 市场价合计=@市场价合计,
-    清单编码=@清单编码, 定额编码=@定额编码, 消耗量类别=@消耗量类别,
-    消耗量名称=@消耗量名称, 规格型号=@规格型号, 消耗量单位=@消耗量单位
-WHERE 定额ID=@定额ID AND 消耗量编码=@消耗量编码",
-                xhl, tx);
-
-            if (updated == 0)
-            {
-                conn.Execute(@"
+            conn.Execute(@"
 INSERT INTO 消耗量
     (定额ID, 清单编码, 定额编码, 消耗量类别, 消耗量编码, 消耗量名称,
      规格型号, 消耗量单位, 含量, 数量, 定额基价, 市场价, 市场价合计)
 VALUES
     (@定额ID, @清单编码, @定额编码, @消耗量类别, @消耗量编码, @消耗量名称,
-     @规格型号, @消耗量单位, @含量, @数量, @定额基价, @市场价, @市场价合计)",
-                    xhl, tx);
-            }
+     @规格型号, @消耗量单位, @含量, @数量, @定额基价, @市场价, @市场价合计)
+ON CONFLICT(定额ID, 消耗量编码) DO UPDATE SET
+    清单编码=excluded.清单编码,
+    定额编码=excluded.定额编码,
+    消耗量类别=excluded.消耗量类别,
+    消耗量名称=excluded.消耗量名称,
+    规格型号=excluded.规格型号,
+    消耗量单位=excluded.消耗量单位,
+    含量=excluded.含量,
+    数量=excluded.数量,
+    定额基价=excluded.定额基价,
+    市场价=excluded.市场价,
+    市场价合计=excluded.市场价合计",
+                xhl, tx);
         }
     }
 }
