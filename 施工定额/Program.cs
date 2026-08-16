@@ -1,5 +1,4 @@
 using 施工定额.Helper;
-using 施工定额.UI;
 
 namespace 施工定额
 {
@@ -24,8 +23,8 @@ namespace 施工定额
             {
                 bootstrap.RunBootstrap = async () =>
                 {
-                    // 仅在系统库缺失时补齐，不主动弹「发现新版本」
-                    await UpdateCoordinator.EnsureSystemDbPresentAsync();
+                    // systemDB 随程序包发布，启动时不再在线检查/下载定额库
+                    await Task.CompletedTask;
 
                     try
                     {
@@ -35,7 +34,7 @@ namespace 施工定额
                     {
                         AppLogger.Error("启动失败：找不到数据库文件", ex);
                         MessageBox.Show(
-                            $"启动失败，找不到必要的数据库文件。\n\n{ex.Message}\n\n请确认数据库文件与程序在同一目录下，或通过工具栏「检查更新」下载后重试。",
+                            $"启动失败，找不到必要的数据库文件。\n\n{ex.Message}\n\n请确认数据库文件与程序在同一目录下。",
                             "启动错误",
                             MessageBoxButtons.OK,
                             MessageBoxIcon.Error);
