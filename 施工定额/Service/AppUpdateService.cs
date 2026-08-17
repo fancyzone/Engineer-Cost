@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text.Json;
@@ -14,19 +14,20 @@ namespace 施工定额.Service
     }
 
     /// <summary>
-    /// 负责检查并应用"程序本体"更新（exe/dll），区别于 DbUpdateService（只更新 systemDB.db）。
+    /// 负责检查并应用程序本体更新（exe/dll）。
+    /// systemDB 随程序包分发，不再单独在线更新。
     ///
-    /// Windows 下运行中的 exe 不能覆盖自己，采用"外部脚本接力"方案：
+    /// Windows 下运行中的 exe 不能覆盖自己，采用「外部脚本接力」方案：
     ///   1. 下载新版本 zip 并校验哈希
     ///   2. 解压到临时目录
-    ///   3. 生成一个 .bat 脚本：等本进程退出 → 用新文件覆盖安装目录 → 重启程序 → 自我删除
-    ///   4. 启动这个脚本（分离进程），然后退出当前程序
+    ///   3. 生成 .bat：等本进程退出 → 覆盖安装目录 → 重启程序 → 自我删除
+    ///   4. 启动脚本后退出当前进程
     /// </summary>
     public class AppUpdateService
     {
         private static readonly HttpClient _http = new() { Timeout = Timeout.InfiniteTimeSpan };
 
-        private const int OverallTimeoutSeconds = 120; // 程序包通常比数据库大，超时放宽一些
+        private const int OverallTimeoutSeconds = 120;
         private const int IdleReadTimeoutSeconds = 15;
         private const int MaxRetryCount = 3;
 
@@ -42,7 +43,21 @@ namespace 施工定额.Service
             System.Reflection.Assembly.GetExecutingAssembly().GetName().Version ?? new Version(0, 0, 0, 0);
 
         /// <summary>
-        /// 查询是否有新版本。网络异常/超时/解析失败时静默返回 null，不打断启动流程。
+        /// 判断远程版本字符串是否新于当前版本（可单测）。
+        /// 解析失败视为不需要更新。
+        /// </summary>
+        public static bool IsNewerThanCurrent(string? remoteVersionText, Version? current = null)
+        {
+            if (string.IsNullOrWhiteSpace(remoteVersionText))
+                return false;
+            if (!Version.TryParse(remoteVersionText.Trim(), out var remote))
+                return false;
+            current ??= GetCurrentVersion();
+            return remote > current;
+        }
+
+        /// <summary>
+        /// 查询是否有新版本。网络异常/超时/解析失败时静默返回 null。
         /// </summary>
         public async Task<AppVersionInfo?> CheckForUpdateAsync(CancellationToken ct = default)
         {
@@ -55,10 +70,7 @@ namespace 施工定额.Service
                 if (info == null || string.IsNullOrWhiteSpace(info.Version) || string.IsNullOrWhiteSpace(info.Url))
                     return null;
 
-                if (!Version.TryParse(info.Version, out var remoteVersion))
-                    return null;
-
-                return remoteVersion > GetCurrentVersion() ? info : null;
+                return IsNewerThanCurrent(info.Version) ? info : null;
             }
             catch
             {
@@ -169,10 +181,6 @@ namespace 施工定额.Service
             return extractDir;
         }
 
-        /// <summary>
-        /// 生成并启动"接力"批处理脚本：等本进程退出 → 覆盖安装目录 → 重启程序 → 自我清理。
-        /// 调用后立即退出当前进程，之后的代码不会执行。
-        /// </summary>
         private void LaunchUpdaterAndExit(string extractDir)
         {
             string installDir = AppContext.BaseDirectory.TrimEnd('\\');
@@ -181,11 +189,7 @@ namespace 施工定额.Service
 
             string scriptPath = Path.Combine(Path.GetTempPath(), $"apply_update_{Guid.NewGuid():N}.bat");
 
-            // /XF 排除清单说明：
-            //   userDB.db / systemDB.db / systemDB.version.txt —— 用户本地数据，绝不能被程序更新包覆盖
-            //   appsettings.json —— 避免覆盖用户本地可能已调整过的连接字符串等配置
-            // 如果确实需要随程序一起升级 appsettings.json，把它从排除列表去掉，
-            // 但要保证发布包里的这个文件内容是正确、完整的。
+            // /XF 排除：用户库、可能被占用的 systemDB、本地 appsettings
             string script = $@"
                     @echo off
                     setlocal
