@@ -1,4 +1,4 @@
-﻿namespace 施工定额
+namespace 施工定额
 {
     partial class Form1
     {
@@ -56,7 +56,6 @@
             toolStrip1 = new ToolStrip();
             toolStripButton1 = new ToolStripButton();
             toolStripButton2 = new ToolStripButton();
-            button1 = new Button();
             tabControl2.SuspendLayout();
             tabPage3.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)dataGridView2).BeginInit();
@@ -76,7 +75,6 @@
             // 
             tabControl2.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             tabControl2.Controls.Add(tabPage3);
-            tabControl2.Controls.Add(tabPage4);
             tabControl2.Location = new Point(117, 724);
             tabControl2.Name = "tabControl2";
             tabControl2.SelectedIndex = 0;
@@ -241,8 +239,6 @@
             // 
             tabControl1.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             tabControl1.Controls.Add(tabPage1);
-            tabControl1.Controls.Add(tabPage2);
-            tabControl1.Controls.Add(tabPage7);
             tabControl1.Controls.Add(tabRenCaiJi);
             tabControl1.Controls.Add(tabCostSummary);
             tabControl1.Location = new Point(117, 78);
@@ -303,22 +299,13 @@
             // 
             // toolStripButton2
             // 
-            toolStripButton2.DisplayStyle = ToolStripItemDisplayStyle.Image;
             toolStripButton2.Image = (Image)resources.GetObject("toolStripButton2.Image");
             toolStripButton2.ImageTransparentColor = Color.Magenta;
             toolStripButton2.Name = "toolStripButton2";
-            toolStripButton2.Size = new Size(29, 44);
-            toolStripButton2.Text = "toolStripButton2";
-            // 
-            // button1
-            // 
-            button1.Location = new Point(12, 133);
-            button1.Name = "button1";
-            button1.Size = new Size(81, 26);
-            button1.TabIndex = 2;
-            button1.Text = "button1";
-            button1.UseVisualStyleBackColor = true;
-            button1.Click += button1_Click;
+            toolStripButton2.Size = new Size(73, 44);
+            toolStripButton2.Text = "导出";
+            toolStripButton2.TextImageRelation = TextImageRelation.ImageAboveText;
+            toolStripButton2.Click += toolStripButton2_Click;
             // 
             // Form1
             // 
@@ -326,13 +313,12 @@
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(1971, 1147);
             Controls.Add(toolStrip1);
-            Controls.Add(button1);
             Controls.Add(tabControl2);
             Controls.Add(tabControl1);
             Controls.Add(menuStrip1);
             MainMenuStrip = menuStrip1;
             Name = "Form1";
-            Text = "Form1";
+            Text = "施工定额";
             Load += Form1_Load;
             tabControl2.ResumeLayout(false);
             tabPage3.ResumeLayout(false);
@@ -375,7 +361,6 @@
         private ToolStripMenuItem 保存ToolStripMenuItem;
         private ToolStrip toolStrip1;
         private ToolStripButton toolStripButton1;
-        private Button button1;
         private ToolStripButton toolStripButton2;
     }
 }
