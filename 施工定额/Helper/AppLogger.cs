@@ -8,7 +8,7 @@ namespace 施工定额.Helper
         private static readonly object _lock = new();
         private static string? _logDir;
 
-        private static string LogDirectory
+        public static string LogDirectory
         {
             get
             {
