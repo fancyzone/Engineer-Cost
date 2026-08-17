@@ -3,51 +3,45 @@ using 施工定额.Helper;
 namespace 施工定额
 {
     /// <summary>
-    /// 布局已全部在 Form1.Designer 中定义（设计器与运行时一致）。
-    /// 此处仅在首次显示时微调分隔条比例，避免极端 DPI/窗口尺寸下的不适。
+    /// 布局结构在 Form1.Designer 中定义。
+    /// SplitContainer 的 MinSize / SplitterDistance 必须在控件有最终尺寸后再设，
+    /// 否则 InitializeComponent 会抛：SplitterDistance 必须在 Panel1MinSize 和 Width-Panel2MinSize 之间。
     /// </summary>
     public partial class Form1
     {
-        /// <summary>保留空方法名兼容构造函数调用；实际只挂接 Shown 微调。</summary>
         private void ApplyResponsiveLayout()
         {
-            // 菜单 / 工具栏 Dock 已由 Designer 与 Controls 添加顺序保证：
-            // Controls: mainSplit → toolStrip1 → menuStrip1
             MainMenuStrip = menuStrip1;
-            Shown += OnFirstShownFineTuneSplitters;
+            Shown += OnFirstShownApplySplitters;
         }
 
-        private void OnFirstShownFineTuneSplitters(object? sender, EventArgs e)
+        private void OnFirstShownApplySplitters(object? sender, EventArgs e)
         {
-            Shown -= OnFirstShownFineTuneSplitters;
-            BeginInvoke(new Action(FineTuneSplitters));
+            Shown -= OnFirstShownApplySplitters;
+            BeginInvoke(new Action(ApplySplittersAfterLayout));
         }
 
-        private void FineTuneSplitters()
+        private void ApplySplittersAfterLayout()
         {
             try
             {
-                // 仅在比例明显不合理时调整，不强制重建控件树
-                if (mainSplit.Width > 400 && mainSplit.SplitterDistance < 80)
-                    SafeSetSplit(mainSplit, preferred: 200, panel1Min: 120, panel2Min: 200);
+                SafeSetSplit(mainSplit, preferred: 200, panel1Min: 120, panel2Min: 200);
 
-                if (rightSplit.Height > 200)
+                if (rightSplit.Height > 50)
                 {
-                    int prefer = (int)(rightSplit.Height * 0.62);
-                    if (Math.Abs(rightSplit.SplitterDistance - prefer) > rightSplit.Height / 4)
-                        SafeSetSplit(rightSplit, preferred: prefer, panel1Min: 150, panel2Min: 100);
+                    int prefer = Math.Max(150, (int)(rightSplit.Height * 0.62));
+                    SafeSetSplit(rightSplit, preferred: prefer, panel1Min: 120, panel2Min: 80);
                 }
 
-                if (qingdanSplit.Height > 120)
+                if (qingdanSplit.Height > 50)
                 {
-                    int prefer = (int)(qingdanSplit.Height * 0.55);
-                    if (Math.Abs(qingdanSplit.SplitterDistance - prefer) > qingdanSplit.Height / 4)
-                        SafeSetSplit(qingdanSplit, preferred: prefer, panel1Min: 60, panel2Min: 60);
+                    int prefer = Math.Max(80, (int)(qingdanSplit.Height * 0.55));
+                    SafeSetSplit(qingdanSplit, preferred: prefer, panel1Min: 60, panel2Min: 60);
                 }
             }
             catch (Exception ex)
             {
-                AppLogger.Error("微调分隔条失败", ex);
+                AppLogger.Error("设置分隔条位置失败", ex);
             }
         }
 
@@ -57,10 +51,11 @@ namespace 施工定额
                 return;
 
             int span = split.Orientation == Orientation.Vertical ? split.Width : split.Height;
-            if (span <= 0)
+            if (span <= 10)
                 return;
 
             int splitter = Math.Max(1, split.SplitterWidth);
+            // 可用空间不够时压低 Min，避免异常
             int maxMin = Math.Max(0, (span - splitter) / 3);
             int p1 = Math.Min(panel1Min, maxMin);
             int p2 = Math.Min(panel2Min, maxMin);
@@ -70,8 +65,10 @@ namespace 施工定额
 
             int maxDist = Math.Max(0, span - splitter - p2);
             int minDist = Math.Min(p1, maxDist);
-            split.SplitterDistance = Math.Clamp(preferred, minDist, maxDist);
+            if (maxDist < minDist)
+                return;
 
+            split.SplitterDistance = Math.Clamp(preferred, minDist, maxDist);
             split.Panel1MinSize = p1;
             split.Panel2MinSize = p2;
         }
