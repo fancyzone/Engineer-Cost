@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics;
 using 施工定额.Entity;
 using 施工定额.Export;
 using 施工定额.Helper;
@@ -37,14 +38,24 @@ namespace 施工定额
             UpdateDisplay(DisplayType.Xiaohaoliang);
         }
 
+        /// <summary>设计器 / 默认入口：使用组合根创建依赖。</summary>
         public Form1()
+            : this(
+                AppComposition.CreateQingdanRepository(),
+                AppComposition.CreateCostCalculationService())
+        {
+        }
+
+        /// <summary>可注入构造：便于测试与替换实现。</summary>
+        public Form1(IQingdanRepository repo, ICostCalculationService calcService)
         {
             InitializeComponent();
+            ApplyResponsiveLayout();
             ApplyToolbarIcons();
             Text = "施工定额";
 
-            _repo = new QingdanRepository(AppConfig.UserDbConn);
-            _calcService = new CostCalculationService();
+            _repo = repo ?? throw new ArgumentNullException(nameof(repo));
+            _calcService = calcService ?? throw new ArgumentNullException(nameof(calcService));
             _selection = new SelectionState();
 
             _qingdanPresenter = new QingdanPresenter(
@@ -61,7 +72,46 @@ namespace 施工定额
             _selection.DingeSelectionChanged += OnDingeSelectionChanged;
 
             EnsureSettingsMenu();
+            EnsureHelpMenu();
             WirePlaceholderMenus();
+        }
+
+        /// <summary>
+        /// 将主区域改为 Dock 填充，减轻固定坐标在小屏上的裁切问题。
+        /// </summary>
+        private void ApplyResponsiveLayout()
+        {
+            menuStrip1.Dock = DockStyle.Top;
+            toolStrip1.Dock = DockStyle.Top;
+
+            tabControl1.Dock = DockStyle.Fill;
+            tabControl2.Dock = DockStyle.Bottom;
+            tabControl2.Height = Math.Max(220, ClientSize.Height / 3);
+
+            dataGridView1.Dock = DockStyle.Fill;
+            DataGridView_dinge.Dock = DockStyle.Bottom;
+            DataGridView_dinge.Height = 170;
+
+            dataGridView2.Dock = DockStyle.Fill;
+            dataGridView3.Dock = DockStyle.Fill;
+            dataGridView4.Dock = DockStyle.Fill;
+
+            treeView1.Dock = DockStyle.Left;
+            treeView1.Width = 180;
+
+            // 分部分项页：清单上、定额下
+            if (tabPage1.Controls.Contains(dataGridView1) && tabPage1.Controls.Contains(DataGridView_dinge))
+            {
+                tabPage1.Controls.SetChildIndex(DataGridView_dinge, 0);
+                tabPage1.Controls.SetChildIndex(dataGridView1, 1);
+            }
+
+            // 人材机：树左、表右
+            if (tabRenCaiJi.Controls.Contains(treeView1) && tabRenCaiJi.Controls.Contains(dataGridView3))
+            {
+                tabRenCaiJi.Controls.SetChildIndex(treeView1, 0);
+                tabRenCaiJi.Controls.SetChildIndex(dataGridView3, 1);
+            }
         }
 
         private void EnsureSettingsMenu()
@@ -77,6 +127,111 @@ namespace 施工定额
             feeItem.Click += (_, _) => OpenFeeSettings();
             settingsMenu.DropDownItems.Add(feeItem);
             menuStrip1.Items.Add(settingsMenu);
+        }
+
+        private void EnsureHelpMenu()
+        {
+            foreach (ToolStripItem item in menuStrip1.Items)
+            {
+                if (item.Text is "帮助" or "帮助(&H)")
+                    return;
+            }
+
+            var help = new ToolStripMenuItem("帮助(&H)");
+
+            var about = new ToolStripMenuItem("关于(&A)...");
+            about.Click += (_, _) => ShowAbout();
+
+            var openLog = new ToolStripMenuItem("打开日志目录");
+            openLog.Click += (_, _) => OpenFolder(AppLogger.LogDirectory);
+
+            var openData = new ToolStripMenuItem("打开数据目录");
+            openData.Click += (_, _) => OpenFolder(AppConfig.DataDirectory);
+
+            var restore = new ToolStripMenuItem("从备份恢复用户库...");
+            restore.Click += (_, _) => RestoreUserDbFromBackup();
+
+            help.DropDownItems.Add(about);
+            help.DropDownItems.Add(new ToolStripSeparator());
+            help.DropDownItems.Add(openLog);
+            help.DropDownItems.Add(openData);
+            help.DropDownItems.Add(restore);
+            menuStrip1.Items.Add(help);
+        }
+
+        private static void OpenFolder(string path)
+        {
+            try
+            {
+                Directory.CreateDirectory(path);
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = path,
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                ErrorHandler.Show(ex, "打开目录失败");
+            }
+        }
+
+        private void ShowAbout()
+        {
+            var ver = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+            ErrorHandler.ShowBusiness(
+                $"施工定额（Engineer-Cost）\n\n" +
+                $"版本：{ver}\n" +
+                $"用户数据：{AppConfig.DataDirectory}\n" +
+                $"系统定额库：{AppConfig.SystemDbFilePath}\n\n" +
+                "个人学习项目。",
+                "关于");
+        }
+
+        private void RestoreUserDbFromBackup()
+        {
+            var backups = UserDbBackup.ListBackups();
+            if (backups.Count == 0)
+            {
+                ErrorHandler.ShowBusiness(
+                    $"未找到备份文件。\n备份目录：{UserDbBackup.BackupDirectory}",
+                    "恢复备份");
+                return;
+            }
+
+            using var ofd = new OpenFileDialog
+            {
+                Title = "选择用户库备份",
+                InitialDirectory = UserDbBackup.BackupDirectory,
+                Filter = "SQLite 数据库 (*.db)|*.db|所有文件 (*.*)|*.*",
+                CheckFileExists = true
+            };
+
+            if (ofd.ShowDialog(this) != DialogResult.OK)
+                return;
+
+            var confirm = MessageBox.Show(
+                this,
+                "恢复备份将覆盖当前用户库。\n" +
+                "恢复前会自动再备份一份当前库。\n\n" +
+                "建议关闭其他可能占用数据库的窗口后继续。\n\n是否继续？",
+                "确认恢复",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning);
+
+            if (confirm != DialogResult.Yes)
+                return;
+
+            try
+            {
+                UserDbBackup.Restore(ofd.FileName, AppConfig.UserDbFilePath);
+                ReloadAndRecalculateEverything();
+                ErrorHandler.ShowBusiness("用户库已从备份恢复，并已重新加载数据。", "恢复备份");
+            }
+            catch (Exception ex)
+            {
+                ErrorHandler.Show(ex, "恢复备份失败");
+            }
         }
 
         private void WirePlaceholderMenus()
@@ -96,7 +251,7 @@ namespace 施工定额
             try
             {
                 AppConfig.SaveUserFeeRates(form.ResultRates);
-                _calcService = new CostCalculationService(form.ResultRates);
+                _calcService = AppComposition.CreateCostCalculationService(form.ResultRates);
                 _qingdanPresenter.ReplaceCalcService(_calcService);
                 _summaryPresenter.ReplaceCalcService(_calcService);
                 ErrorHandler.ShowBusiness("费率已保存，并已按新费率重算全部清单。", "费率设置");
@@ -205,7 +360,7 @@ namespace 施工定额
                 return;
             }
 
-            Form2 f2 = new Form2(qingdanCode);
+            Form2 f2 = AppComposition.CreateImportForm(qingdanCode);
 
             f2.DataImported += () =>
             {
