@@ -37,7 +37,7 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="systemDB.db">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="userDB.db">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
