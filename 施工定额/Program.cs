@@ -28,7 +28,7 @@ namespace 施工定额
 
                     try
                     {
-                        AppCache.Instance.LoadAll();
+                        AppComposition.Cache.LoadAll();
                     }
                     catch (FileNotFoundException ex)
                     {

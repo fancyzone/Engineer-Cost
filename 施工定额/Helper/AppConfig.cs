@@ -29,7 +29,8 @@ namespace 施工定额.Helper
 
         public static string UserDbConn => ResolveConn("UserDb", preferAppData: true);
         public static string SystemDbConn => ResolveConn("SystemDb", preferAppData: false);
-        public static string UpdateVersionInfoUrl => _config["UpdateSettings:VersionInfoUrl"] ?? "";
+
+        /// <summary>程序更新版本信息 URL（仅程序包，不含 systemDB 单独更新）。</summary>
         public static string AppUpdateVersionInfoUrl => _config["UpdateSettings:AppVersionInfoUrl"] ?? "";
 
         public static FeeRateSettings FeeRates
