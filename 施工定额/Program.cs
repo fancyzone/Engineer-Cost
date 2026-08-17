@@ -17,6 +17,21 @@ namespace 施工定额
 
             ApplicationConfiguration.Initialize();
 
+            // Ctrl+F5 无调试器时，未处理异常会直接闪退；这里兜底提示
+            Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
+            Application.ThreadException += (_, e) =>
+            {
+                AppLogger.Error("UI 线程未处理异常", e.Exception);
+                MessageBox.Show(e.Exception.ToString(), "未处理异常", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            };
+            AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+            {
+                var ex = e.ExceptionObject as Exception;
+                AppLogger.Error("域未处理异常", ex);
+                MessageBox.Show(ex?.ToString() ?? e.ExceptionObject?.ToString() ?? "未知错误",
+                    "严重错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            };
+
             bool startupOk = true;
 
             using (var bootstrap = new BootstrapForm())
@@ -55,8 +70,22 @@ namespace 施工定额
                 Application.Run(bootstrap);
             }
 
-            if (startupOk)
+            if (!startupOk)
+                return;
+
+            try
+            {
                 Application.Run(new Form1());
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Error("主窗体启动失败", ex);
+                MessageBox.Show(
+                    $"主窗体启动失败：\n\n{ex.Message}\n\n详细信息已写入日志目录。",
+                    "启动错误",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
         }
     }
 }
