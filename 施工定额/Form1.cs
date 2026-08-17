@@ -21,15 +21,6 @@ namespace 施工定额
         private readonly SummaryPresenter _summaryPresenter;
         private readonly ContextMenuBuilder _menuBuilder;
 
-        /// <summary>主区域：左工程树 | 右内容</summary>
-        private SplitContainer? _mainSplit;
-        /// <summary>分部分项：上清单 | 下定额</summary>
-        private SplitContainer? _qingdanSplit;
-        /// <summary>右侧：上主 Tab | 下工料机</summary>
-        private SplitContainer? _rightSplit;
-        /// <summary>左侧工程结构树（占位，后续接入）</summary>
-        private TreeView? treeProject;
-
         /// <summary>刷新子表时抑制 CellValueChanged，避免事件重入。</summary>
         private bool _suppressGridEvents;
 
@@ -47,7 +38,6 @@ namespace 施工定额
             UpdateDisplay(DisplayType.Xiaohaoliang);
         }
 
-        /// <summary>设计器 / 默认入口：使用组合根创建依赖。</summary>
         public Form1()
             : this(
                 AppComposition.CreateQingdanRepository(),
@@ -55,10 +45,10 @@ namespace 施工定额
         {
         }
 
-        /// <summary>可注入构造：便于测试与替换实现。</summary>
         public Form1(IQingdanRepository repo, ICostCalculationService calcService)
         {
             InitializeComponent();
+            // 布局以 Designer 为准；此处仅微调分隔条（见 Form1.Layout.cs）
             ApplyResponsiveLayout();
             ApplyToolbarIcons();
             Text = "施工定额";
@@ -84,8 +74,6 @@ namespace 施工定额
             EnsureHelpMenu();
             WirePlaceholderMenus();
         }
-
-        // ApplyResponsiveLayout 见 Form1.Layout.cs
 
         private void EnsureSettingsMenu()
         {
@@ -529,7 +517,6 @@ namespace 施工定额
             }
         }
 
-        /// <summary>为工具栏按钮绘制图标（检查更新 + 导出）。</summary>
         private void ApplyToolbarIcons()
         {
             toolStripButton1.Image = CreateRefreshIcon();
