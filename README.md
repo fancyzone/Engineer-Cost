@@ -11,7 +11,7 @@
 - 管理费 / 利润 / 规费 / 增值税按 `appsettings.json` 取费
 - 导入系统定额库条目到用户工程
 - 河南省 YDJC（DBJ 41/T087-2024）成果导出
-- 程序与定额库在线更新
+- 程序在线检查更新（工具栏手动触发）；定额库 systemDB 随程序包分发
 
 ## 技术栈
 
@@ -33,7 +33,7 @@
 
 - `ConnectionStrings`：用户库 / 系统库
 - `FeeSettings`：管理费基数与费率、利润率、规费、增值税等
-- `UpdateSettings`：版本检查 URL
+- `UpdateSettings`：程序版本检查 URL
 
 ## 开发
 

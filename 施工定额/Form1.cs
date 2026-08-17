@@ -40,7 +40,8 @@ namespace 施工定额
         public Form1()
         {
             InitializeComponent();
-            ApplyCheckUpdateButtonIcon();
+            ApplyToolbarIcons();
+            Text = "施工定额";
 
             _repo = new QingdanRepository(AppConfig.UserDbConn);
             _calcService = new CostCalculationService();
@@ -60,6 +61,7 @@ namespace 施工定额
             _selection.DingeSelectionChanged += OnDingeSelectionChanged;
 
             EnsureSettingsMenu();
+            WirePlaceholderMenus();
         }
 
         private void EnsureSettingsMenu()
@@ -75,6 +77,14 @@ namespace 施工定额
             feeItem.Click += (_, _) => OpenFeeSettings();
             settingsMenu.DropDownItems.Add(feeItem);
             menuStrip1.Items.Add(settingsMenu);
+        }
+
+        private void WirePlaceholderMenus()
+        {
+            打开ToolStripMenuItem.Click += (_, _) =>
+                ErrorHandler.ShowBusiness("「打开工程」尚未实现，当前工程数据保存在用户库中。", "提示");
+            保存ToolStripMenuItem.Click += (_, _) =>
+                ErrorHandler.ShowBusiness("数据已在编辑时自动保存到用户库，无需手动保存。", "提示");
         }
 
         private void OpenFeeSettings()
@@ -368,14 +378,13 @@ namespace 施工定额
             }
         }
 
-        private void button1_Click(object sender, EventArgs e)
+        private void toolStripButton2_Click(object sender, EventArgs e)
         {
             ExportCoordinator.ExportYdjc(this, myMemoryQingdanBindingList, _calcService);
         }
 
         private async void toolStripButton1_Click(object sender, EventArgs e)
         {
-            // 工具栏「检查更新」：仅检查程序更新；无更新时提示已是最新
             var btn = sender as ToolStripItem;
             try
             {
@@ -392,35 +401,66 @@ namespace 施工定额
             }
         }
 
-        /// <summary>为工具栏「检查更新」绘制刷新图标（不依赖外部资源文件）。</summary>
-        private void ApplyCheckUpdateButtonIcon()
+        /// <summary>为工具栏按钮绘制图标（检查更新 + 导出）。</summary>
+        private void ApplyToolbarIcons()
+        {
+            toolStripButton1.Image = CreateRefreshIcon();
+            toolStripButton1.DisplayStyle = ToolStripItemDisplayStyle.ImageAndText;
+            toolStripButton1.TextImageRelation = TextImageRelation.ImageAboveText;
+
+            toolStripButton2.Image = CreateExportIcon();
+            toolStripButton2.DisplayStyle = ToolStripItemDisplayStyle.ImageAndText;
+            toolStripButton2.TextImageRelation = TextImageRelation.ImageAboveText;
+            toolStripButton2.Text = "导出";
+        }
+
+        private static Bitmap CreateRefreshIcon()
         {
             const int size = 32;
             var bmp = new Bitmap(size, size);
-            using (var g = Graphics.FromImage(bmp))
+            using var g = Graphics.FromImage(bmp);
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            g.Clear(Color.Transparent);
+
+            using var pen = new Pen(Color.FromArgb(0, 120, 215), 2.5f);
+            var rect = new Rectangle(5, 5, size - 10, size - 10);
+            g.DrawArc(pen, rect, 40, 280);
+
+            using var brush = new SolidBrush(Color.FromArgb(0, 120, 215));
+            PointF[] tip =
             {
-                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                g.Clear(Color.Transparent);
+                new PointF(size - 7, 8),
+                new PointF(size - 14, 6),
+                new PointF(size - 12, 14)
+            };
+            g.FillPolygon(brush, tip);
+            return bmp;
+        }
 
-                using var pen = new Pen(Color.FromArgb(0, 120, 215), 2.5f);
-                var rect = new Rectangle(5, 5, size - 10, size - 10);
-                g.DrawArc(pen, rect, 40, 280);
+        private static Bitmap CreateExportIcon()
+        {
+            const int size = 32;
+            var bmp = new Bitmap(size, size);
+            using var g = Graphics.FromImage(bmp);
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            g.Clear(Color.Transparent);
 
-                using var brush = new SolidBrush(Color.FromArgb(0, 120, 215));
-                PointF[] tip =
-                {
-                    new PointF(size - 7, 8),
-                    new PointF(size - 14, 6),
-                    new PointF(size - 12, 14)
-                };
-                g.FillPolygon(brush, tip);
-            }
+            using var pen = new Pen(Color.FromArgb(16, 124, 16), 2f);
+            using var brush = new SolidBrush(Color.FromArgb(16, 124, 16));
 
-            var old = toolStripButton1.Image;
-            toolStripButton1.Image = bmp;
-            toolStripButton1.DisplayStyle = ToolStripItemDisplayStyle.ImageAndText;
-            toolStripButton1.TextImageRelation = TextImageRelation.ImageAboveText;
-            old?.Dispose();
+            g.DrawRectangle(pen, 8, 4, 16, 22);
+            g.DrawLine(pen, 18, 4, 18, 10);
+            g.DrawLine(pen, 18, 10, 24, 10);
+            g.DrawLine(pen, 18, 4, 24, 10);
+            g.DrawLine(pen, 16, 14, 16, 22);
+            PointF[] arrow =
+            {
+                new PointF(16, 24),
+                new PointF(12, 20),
+                new PointF(20, 20)
+            };
+            g.FillPolygon(brush, arrow);
+            return bmp;
         }
     }
 }
