@@ -77,15 +77,16 @@ namespace 施工定额
 
             //
             // mainSplit — 左工程树 | 右内容
+            // 注意：初始化时不要设 Panel*MinSize / SplitterDistance，
+            // 控件尚未有最终尺寸时会抛「SplitterDistance 必须在 … 之间」。
+            // 比例在 Form1.Layout.ApplySplittersAfterLayout 里设置。
             //
             mainSplit.Dock = DockStyle.Fill;
             mainSplit.FixedPanel = FixedPanel.Panel1;
-            mainSplit.Location = new Point(0, 75);
             mainSplit.Name = "mainSplit";
             mainSplit.Orientation = Orientation.Vertical;
-            mainSplit.Panel1MinSize = 120;
-            mainSplit.Panel2MinSize = 200;
-            mainSplit.SplitterDistance = 200;
+            mainSplit.Panel1MinSize = 0;
+            mainSplit.Panel2MinSize = 0;
             mainSplit.SplitterWidth = 5;
             mainSplit.TabIndex = 0;
             mainSplit.Panel1.Controls.Add(treeProject);
@@ -108,9 +109,8 @@ namespace 施工定额
             rightSplit.Dock = DockStyle.Fill;
             rightSplit.Name = "rightSplit";
             rightSplit.Orientation = Orientation.Horizontal;
-            rightSplit.Panel1MinSize = 150;
-            rightSplit.Panel2MinSize = 100;
-            rightSplit.SplitterDistance = 480;
+            rightSplit.Panel1MinSize = 0;
+            rightSplit.Panel2MinSize = 0;
             rightSplit.SplitterWidth = 5;
             rightSplit.TabIndex = 0;
             rightSplit.Panel1.Controls.Add(tabControl1);
@@ -144,9 +144,8 @@ namespace 施工定额
             qingdanSplit.Dock = DockStyle.Fill;
             qingdanSplit.Name = "qingdanSplit";
             qingdanSplit.Orientation = Orientation.Horizontal;
-            qingdanSplit.Panel1MinSize = 60;
-            qingdanSplit.Panel2MinSize = 60;
-            qingdanSplit.SplitterDistance = 280;
+            qingdanSplit.Panel1MinSize = 0;
+            qingdanSplit.Panel2MinSize = 0;
             qingdanSplit.SplitterWidth = 5;
             qingdanSplit.TabIndex = 0;
             qingdanSplit.Panel1.Controls.Add(dataGridView1);
