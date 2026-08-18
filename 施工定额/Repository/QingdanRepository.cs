@@ -58,7 +58,8 @@ namespace 施工定额
             {
                 conn.Execute(@"UPDATE 清单 SET 
                 清单名称=@清单名称, 项目特征=@项目特征, 单位=@单位,
-                工程量=@工程量, 综合单价=@综合单价, 综合合价=@综合合价
+                工程量=@工程量, 综合单价=@综合单价, 综合合价=@综合合价,
+                项目类别=@项目类别
                 WHERE 清单编码=@清单编码", qd, tx);
 
                 foreach (var dg in qd.定额列表)
@@ -81,7 +82,8 @@ namespace 施工定额
             using var conn = new SqliteConnection(_connStr);
             conn.Execute(@"UPDATE 清单 SET 
                 清单名称=@清单名称, 项目特征=@项目特征, 单位=@单位,
-                工程量=@工程量, 综合单价=@综合单价, 综合合价=@综合合价
+                工程量=@工程量, 综合单价=@综合单价, 综合合价=@综合合价,
+                项目类别=@项目类别
                 WHERE 清单编码=@清单编码", qd);
         }
 
