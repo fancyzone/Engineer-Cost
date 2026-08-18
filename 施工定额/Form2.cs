@@ -8,26 +8,30 @@ namespace 施工定额
     public partial class Form2 : Form
     {
         private readonly string _targetQingdanCode;
+        private readonly string _qingdanCategory;
         private readonly IImportService _importService;
         private readonly IAppCache _cache;
 
         public event Action? DataImported;
 
-        public Form2(string targetQingdanCode)
+        public Form2(string targetQingdanCode, string? qingdanCategory = null)
             : this(targetQingdanCode,
                    new ImportService(AppConfig.SystemDbConn, AppConfig.UserDbConn),
-                   AppCache.Instance)
+                   AppCache.Instance,
+                   qingdanCategory)
         {
         }
 
         /// <summary>
         /// 可注入构造：便于测试与后续 DI 接入。
         /// </summary>
-        public Form2(string targetQingdanCode, IImportService importService, IAppCache cache)
+        public Form2(string targetQingdanCode, IImportService importService, IAppCache cache,
+            string? qingdanCategory = null)
         {
             InitializeComponent();
             comboBox2.SelectedIndex = 0;
             _targetQingdanCode = targetQingdanCode;
+            _qingdanCategory = QingdanCategory.Normalize(qingdanCategory);
             _importService = importService;
             _cache = cache;
         }
@@ -114,7 +118,7 @@ namespace 施工定额
 
             try
             {
-                _importService.ImportQingdan(code, name, feature, unit);
+                _importService.ImportQingdan(code, name, feature, unit, _qingdanCategory);
             }
             catch (Exception ex)
             {
