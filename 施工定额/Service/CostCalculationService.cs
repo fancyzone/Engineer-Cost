@@ -4,20 +4,6 @@ using 施工定额.Service;
 
 namespace 施工定额
 {
-    /// <summary>
-    /// 工程造价计算引擎。
-    ///
-    /// 计算链路：
-    ///   消耗量.数量 = 含量 × 定额工程量
-    ///   消耗量.市场价合计 = 市场价 × 数量
-    ///   按消耗量类别汇总 → 人工费 / 材料费 / 机械费
-    ///   直接费 = 人工费 + 材料费 + 机械费
-    ///   管理费 = 基数(直接费或人工费) × 管理费率
-    ///   利润   = (直接费 + 管理费) × 利润率
-    ///   规费   = 人工费 × 规费率
-    ///   定额合价 / 清单综合合价 = 直接费 + 管理费 + 利润（± 规费）
-    ///   税金在项目级汇总时按增值税率计算
-    /// </summary>
     public class CostCalculationService : ICostCalculationService
     {
         private readonly FeeRateSettings _rates;
@@ -123,7 +109,10 @@ namespace 施工定额
         public ProjectCostSummary CalculateProjectSummary(IEnumerable<Qingdan> qingdanList)
         {
             var list = qingdanList.ToList();
-            decimal billTotal = list.Sum(q => q.综合合价);
+            decimal fenbu = list.Where(q => q.项目类别 == QingdanCategory.分部分项).Sum(q => q.综合合价);
+            decimal measure = list.Where(q => QingdanCategory.IsMeasure(q.项目类别)).Sum(q => q.综合合价);
+            decimal billTotal = fenbu + measure;
+
             decimal labor = list.Sum(q => q.费用构成.人工费);
             decimal material = list.Sum(q => q.费用构成.材料费);
             decimal machine = list.Sum(q => q.费用构成.机械费);
@@ -139,7 +128,8 @@ namespace 施工定额
 
             return new ProjectCostSummary
             {
-                分部分项合价 = billTotal,
+                分部分项合价 = fenbu,
+                措施项目合价 = measure,
                 人工费 = labor,
                 材料费 = material,
                 机械费 = machine,

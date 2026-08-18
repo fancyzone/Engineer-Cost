@@ -16,11 +16,11 @@ namespace 施工定额.Service
         }
 
         /// <summary>
-        /// 从系统库导入一条清单（连同它下属的所有定额和消耗量）到用户库
+        /// 从系统库导入一条清单（连同它下属的所有定额和消耗量）到用户库。
+        /// 默认项目类别为分部分项；若需导入为措施，调用方应在导入后更新类别。
         /// </summary>
         public void ImportQingdan(string sysQingdanCode, string name, string feature, string unit)
         {
-            // 1. 从系统库捞取该清单下的所有定额和消耗量
             List<Dinge> sysDingeList;
             List<Xiaohaoliang> sysXhlList;
 
@@ -35,7 +35,6 @@ namespace 施工定额.Service
                     new { Code = sysQingdanCode }).ToList();
             }
 
-            // 2. 为每条定额生成新的隔离 GUID，并建立旧ID → 新ID的映射
             var idMapping = new Dictionary<string, string>();
             foreach (var dg in sysDingeList)
             {
@@ -50,7 +49,6 @@ namespace 施工定额.Service
                 dg.换算系数 = 1m;
             }
 
-            // 3. 消耗量的 ID号 换成对应的新 GUID
             foreach (var xhl in sysXhlList)
             {
                 if (!string.IsNullOrEmpty(xhl.定额ID) && idMapping.TryGetValue(xhl.定额ID, out var newId))
@@ -60,7 +58,6 @@ namespace 施工定额.Service
                 xhl.市场价合计 = 0;
             }
 
-            // 4. 写入用户库
             using var userConn = new SqliteConnection(_userConn);
             userConn.Open();
             using var tx = userConn.BeginTransaction();
@@ -68,10 +65,17 @@ namespace 施工定额.Service
             {
                 userConn.Execute(@"
                     INSERT OR IGNORE INTO 清单
-                        (清单编码, 清单名称, 项目特征, 单位, 工程量, 综合单价, 综合合价)
+                        (清单编码, 清单名称, 项目特征, 单位, 工程量, 综合单价, 综合合价, 项目类别)
                     VALUES
-                        (@清单编码, @清单名称, @项目特征, @单位, 0, 0, 0)",
-                    new { 清单编码 = sysQingdanCode, 清单名称 = name, 项目特征 = feature, 单位 = unit },
+                        (@清单编码, @清单名称, @项目特征, @单位, 0, 0, 0, @项目类别)",
+                    new
+                    {
+                        清单编码 = sysQingdanCode,
+                        清单名称 = name,
+                        项目特征 = feature,
+                        单位 = unit,
+                        项目类别 = QingdanCategory.分部分项
+                    },
                     tx);
 
                 if (sysDingeList.Count > 0)
@@ -101,14 +105,8 @@ namespace 施工定额.Service
             }
         }
 
-        /// <summary>
-        /// 向用户库指定清单下导入一条定额（含消耗量）。
-        /// 优先按系统库定额 ID（sysId）取消耗量，避免同编码跨分类误匹配；
-        /// 若按 ID 无结果再回退到定额编码。
-        /// </summary>
         public void ImportDinge(string targetQingdanCode, string sysId, string dingeCode, string name, string unit)
         {
-            // 1. 读取目标清单当前工程量
             decimal qingdanWorkAmount;
             using (var conn = new SqliteConnection(_userConn))
             {
@@ -117,7 +115,6 @@ namespace 施工定额.Service
                     new { Code = targetQingdanCode });
             }
 
-            // 2. 从系统库捞取该定额的所有消耗量（优先 定额ID，回退 定额编码）
             List<Xiaohaoliang> sysXhlList;
             using (var conn = new SqliteConnection(_sysConn))
             {
@@ -141,7 +138,6 @@ namespace 施工定额.Service
                 throw new InvalidOperationException(
                     $"定额 [{dingeCode}]（系统ID={sysId}）在系统库中未找到消耗量明细。");
 
-            // 3. 生成新的隔离 GUID
             string newId = Guid.NewGuid().ToString();
 
             foreach (var xhl in sysXhlList)
@@ -154,7 +150,6 @@ namespace 施工定额.Service
                 xhl.市场价合计 = Math.Round(xhl.市场价 * xhl.数量, 2);
             }
 
-            // 4. 写入用户库
             using var userConn = new SqliteConnection(_userConn);
             userConn.Open();
             using var tx = userConn.BeginTransaction();

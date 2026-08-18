@@ -17,14 +17,16 @@ namespace 施工定额.Helper
                 using var conn = new SqliteConnection($"Data Source={dbPath}");
                 conn.Open();
                 EnsureColumn(conn, "定额_市政工程", "换算系数", "REAL NOT NULL DEFAULT 1");
+                EnsureColumn(conn, "清单", "项目类别", "INTEGER NOT NULL DEFAULT 0");
                 EnsureIndex(conn, "idx_定额_清单编码",
                     "CREATE INDEX IF NOT EXISTS \"idx_定额_清单编码\" ON \"定额_市政工程\"(\"清单编码\")");
                 EnsureIndex(conn, "idx_消耗量_清单编码",
                     "CREATE INDEX IF NOT EXISTS \"idx_消耗量_清单编码\" ON \"消耗量\"(\"清单编码\")");
                 EnsureIndex(conn, "idx_消耗量_编码",
                     "CREATE INDEX IF NOT EXISTS \"idx_消耗量_编码\" ON \"消耗量\"(\"消耗量编码\")");
+                EnsureIndex(conn, "idx_清单_项目类别",
+                    "CREATE INDEX IF NOT EXISTS \"idx_清单_项目类别\" ON \"清单\"(\"项目类别\")");
 
-                // 为 ON CONFLICT(定额ID, 消耗量编码) 准备唯一索引（先去重）
                 EnsureUniqueXiaohaoliangIndex(conn);
             }
             catch (Exception ex)
@@ -33,9 +35,6 @@ namespace 施工定额.Helper
             }
         }
 
-        /// <summary>
-        /// 删除 (定额ID, 消耗量编码) 重复行后创建 UNIQUE INDEX，供 UPSERT 使用。
-        /// </summary>
         private static void EnsureUniqueXiaohaoliangIndex(SqliteConnection conn)
         {
             const string uniqueName = "uidx_消耗量_定额ID_编码";

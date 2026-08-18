@@ -33,7 +33,8 @@ namespace 施工定额.Tests
 CREATE TABLE 清单 (
   ID号 INTEGER PRIMARY KEY AUTOINCREMENT,
   清单编码 TEXT, 清单名称 TEXT, 项目特征 TEXT, 单位 TEXT,
-  工程量 REAL, 综合单价 REAL, 综合合价 REAL
+  工程量 REAL, 综合单价 REAL, 综合合价 REAL,
+  项目类别 INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE 定额_市政工程 (
   ID号 TEXT NOT NULL UNIQUE,
@@ -58,7 +59,8 @@ CREATE UNIQUE INDEX uidx_消耗量_定额ID_编码 ON 消耗量(定额ID, 消耗
                 清单编码 = "Q-001",
                 清单名称 = "测试清单",
                 单位 = "m3",
-                工程量 = 10m
+                工程量 = 10m,
+                项目类别 = QingdanCategory.分部分项
             };
             var dg = new Dinge
             {
@@ -94,8 +96,8 @@ CREATE UNIQUE INDEX uidx_消耗量_定额ID_编码 ON 消耗量(定额ID, 消耗
             using (var conn = new SqliteConnection(_connStr))
             {
                 conn.Open();
-                conn.Execute(@"INSERT INTO 清单 (清单编码, 清单名称, 单位, 工程量, 综合单价, 综合合价)
-VALUES (@清单编码, @清单名称, @单位, @工程量, 0, 0)", qd);
+                conn.Execute(@"INSERT INTO 清单 (清单编码, 清单名称, 单位, 工程量, 综合单价, 综合合价, 项目类别)
+VALUES (@清单编码, @清单名称, @单位, @工程量, 0, 0, @项目类别)", qd);
             }
 
             _repo.SaveDinge(qd.定额列表[0]);
@@ -114,8 +116,8 @@ VALUES (@清单编码, @清单名称, @单位, @工程量, 0, 0)", qd);
             using (var conn = new SqliteConnection(_connStr))
             {
                 conn.Open();
-                conn.Execute(@"INSERT INTO 清单 (清单编码, 清单名称, 单位, 工程量, 综合单价, 综合合价)
-VALUES (@清单编码, @清单名称, @单位, @工程量, 0, 0)", qd);
+                conn.Execute(@"INSERT INTO 清单 (清单编码, 清单名称, 单位, 工程量, 综合单价, 综合合价, 项目类别)
+VALUES (@清单编码, @清单名称, @单位, @工程量, 0, 0, @项目类别)", qd);
             }
 
             _repo.SaveDinge(qd.定额列表[0]);
@@ -138,8 +140,8 @@ VALUES (@清单编码, @清单名称, @单位, @工程量, 0, 0)", qd);
             using (var conn = new SqliteConnection(_connStr))
             {
                 conn.Open();
-                conn.Execute(@"INSERT INTO 清单 (清单编码, 清单名称, 单位, 工程量, 综合单价, 综合合价)
-VALUES (@清单编码, @清单名称, @单位, @工程量, 0, 0)", qd);
+                conn.Execute(@"INSERT INTO 清单 (清单编码, 清单名称, 单位, 工程量, 综合单价, 综合合价, 项目类别)
+VALUES (@清单编码, @清单名称, @单位, @工程量, 0, 0, @项目类别)", qd);
             }
 
             qd.工程量 = 12m;
