@@ -17,7 +17,9 @@ namespace 施工定额.Helper
                 using var conn = new SqliteConnection($"Data Source={dbPath}");
                 conn.Open();
                 EnsureColumn(conn, "定额_市政工程", "换算系数", "REAL NOT NULL DEFAULT 1");
-                EnsureColumn(conn, "清单", "项目类别", "INTEGER NOT NULL DEFAULT 0");
+                EnsureColumn(conn, "清单", "项目类别", "TEXT NOT NULL DEFAULT '分部分项'");
+                NormalizeQingdanCategory(conn);
+                EnsureOtherProjectTable(conn);
                 EnsureIndex(conn, "idx_定额_清单编码",
                     "CREATE INDEX IF NOT EXISTS \"idx_定额_清单编码\" ON \"定额_市政工程\"(\"清单编码\")");
                 EnsureIndex(conn, "idx_消耗量_清单编码",
@@ -33,6 +35,58 @@ namespace 施工定额.Helper
             {
                 AppLogger.Error("用户库迁移失败", ex);
             }
+        }
+
+        private static void NormalizeQingdanCategory(SqliteConnection conn)
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+UPDATE ""清单"" SET ""项目类别"" = CASE
+  WHEN ""项目类别"" IS NULL OR TRIM(CAST(""项目类别"" AS TEXT)) = '' THEN '分部分项'
+  WHEN CAST(""项目类别"" AS TEXT) IN ('0') THEN '分部分项'
+  WHEN CAST(""项目类别"" AS TEXT) IN ('1','2') THEN '措施项目'
+  WHEN CAST(""项目类别"" AS TEXT) IN ('3') THEN '其他项目'
+  WHEN CAST(""项目类别"" AS TEXT) IN ('分部分项','措施项目','其他项目') THEN CAST(""项目类别"" AS TEXT)
+  WHEN CAST(""项目类别"" AS TEXT) LIKE '%措施%' THEN '措施项目'
+  WHEN CAST(""项目类别"" AS TEXT) LIKE '%其他%' THEN '其他项目'
+  ELSE '分部分项'
+END;";
+            cmd.ExecuteNonQuery();
+        }
+
+        private static void EnsureOtherProjectTable(SqliteConnection conn)
+        {
+            using (var create = conn.CreateCommand())
+            {
+                create.CommandText = @"
+CREATE TABLE IF NOT EXISTS ""其他项目"" (
+  ""名称"" TEXT NOT NULL PRIMARY KEY,
+  ""金额"" REAL NOT NULL DEFAULT 0,
+  ""可编辑"" INTEGER NOT NULL DEFAULT 1
+);";
+                create.ExecuteNonQuery();
+            }
+
+            var seeds = new (string name, int editable)[]
+            {
+                ("暂列金额", 1),
+                ("暂估价", 0),
+                ("总承包服务费", 1),
+                ("计日工", 1),
+            };
+            foreach (var (name, editable) in seeds)
+            {
+                using var ins = conn.CreateCommand();
+                ins.CommandText =
+                    @"INSERT OR IGNORE INTO ""其他项目"" (""名称"", ""金额"", ""可编辑"") VALUES ($n, 0, $e)";
+                ins.Parameters.AddWithValue("$n", name);
+                ins.Parameters.AddWithValue("$e", editable);
+                ins.ExecuteNonQuery();
+            }
+
+            using var lockZg = conn.CreateCommand();
+            lockZg.CommandText = @"UPDATE ""其他项目"" SET ""金额""=0, ""可编辑""=0 WHERE ""名称""='暂估价'";
+            lockZg.ExecuteNonQuery();
         }
 
         private static void EnsureUniqueXiaohaoliangIndex(SqliteConnection conn)
