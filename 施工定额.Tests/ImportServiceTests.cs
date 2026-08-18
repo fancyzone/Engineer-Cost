@@ -61,7 +61,7 @@ CREATE TABLE 清单 (
   ID号 INTEGER PRIMARY KEY AUTOINCREMENT,
   清单编码 TEXT, 清单名称 TEXT, 项目特征 TEXT, 单位 TEXT,
   工程量 REAL, 综合单价 REAL, 综合合价 REAL,
-  项目类别 INTEGER NOT NULL DEFAULT 0
+  项目类别 TEXT NOT NULL DEFAULT '分部分项'
 );
 CREATE TABLE 定额_市政工程 (
   ID号 TEXT NOT NULL UNIQUE,
@@ -101,8 +101,8 @@ VALUES ('sys-dg-1', 'Q-SYS', 'D-100', '人', 'L1', '普工', '工日', 2, 0, 100
             var qdCount = conn.ExecuteScalar<int>("SELECT COUNT(1) FROM 清单 WHERE 清单编码='Q-SYS'");
             Assert.Equal(1, qdCount);
 
-            var category = conn.ExecuteScalar<int>("SELECT 项目类别 FROM 清单 WHERE 清单编码='Q-SYS'");
-            Assert.Equal(0, category);
+            var category = conn.ExecuteScalar<string>("SELECT 项目类别 FROM 清单 WHERE 清单编码='Q-SYS'");
+            Assert.Equal("分部分项", category);
 
             var dgId = conn.ExecuteScalar<string>("SELECT ID号 FROM 定额_市政工程 WHERE 清单编码='Q-SYS'");
             Assert.False(string.IsNullOrEmpty(dgId));
@@ -122,7 +122,7 @@ VALUES ('sys-dg-1', 'Q-SYS', 'D-100', '人', 'L1', '普工', '工日', 2, 0, 100
             {
                 conn.Open();
                 conn.Execute(@"INSERT INTO 清单 (清单编码, 清单名称, 单位, 工程量, 综合单价, 综合合价, 项目类别)
-VALUES ('Q-USER', '用户清单', 'm3', 5, 0, 0, 0)");
+VALUES ('Q-USER', '用户清单', 'm3', 5, 0, 0, '分部分项')");
             }
 
             _svc.ImportDinge("Q-USER", "sys-dg-1", "D-100", "挖土", "m3");
@@ -146,7 +146,7 @@ VALUES ('Q-USER', '用户清单', 'm3', 5, 0, 0, 0)");
             {
                 conn.Open();
                 conn.Execute(@"INSERT INTO 清单 (清单编码, 清单名称, 单位, 工程量, 综合单价, 综合合价, 项目类别)
-VALUES ('Q-USER', '用户清单', 'm3', 1, 0, 0, 0)");
+VALUES ('Q-USER', '用户清单', 'm3', 1, 0, 0, '分部分项')");
             }
 
             Assert.Throws<InvalidOperationException>(() =>
