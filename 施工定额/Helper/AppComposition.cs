@@ -22,7 +22,7 @@ namespace 施工定额.Helper
 
         public static IAppCache Cache => AppCache.Instance;
 
-        public static Form2 CreateImportForm(string targetQingdanCode) =>
-            new Form2(targetQingdanCode, CreateImportService(), Cache);
+        public static Form2 CreateImportForm(string targetQingdanCode, string? qingdanCategory = null) =>
+            new Form2(targetQingdanCode, CreateImportService(), Cache, qingdanCategory);
     }
 }

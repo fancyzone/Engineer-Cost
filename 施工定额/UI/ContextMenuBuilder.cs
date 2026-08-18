@@ -1,3 +1,4 @@
+using 施工定额.Entity;
 using 施工定额.Helper;
 
 namespace 施工定额.UI
@@ -22,16 +23,22 @@ namespace 施工定额.UI
             _reloadAll = reloadAll;
         }
 
-        public ContextMenuStrip BuildQingdanMenu(DataGridView dgv)
+        /// <param name="qingdanCategory">
+        /// 右键「新建清单」时写入的项目类别。
+        /// 分部分项页传「分部分项」，措施页传「措施项目」。
+        /// </param>
+        public ContextMenuStrip BuildQingdanMenu(DataGridView dgv,
+            string qingdanCategory = QingdanCategory.分部分项)
         {
             var menu = new ContextMenuStrip();
+            var category = QingdanCategory.Normalize(qingdanCategory);
 
             var deleteItem = new ToolStripMenuItem("删除清单");
             deleteItem.Click += (_, _) => DeleteQingdan(dgv);
             menu.Items.Add(deleteItem);
 
             var newItem = new ToolStripMenuItem("新建清单");
-            newItem.Click += (_, _) => CreateNewQingdan();
+            newItem.Click += (_, _) => CreateNewQingdan(category);
             menu.Items.Add(newItem);
 
             return menu;
@@ -74,9 +81,9 @@ namespace 施工定额.UI
             }
         }
 
-        private void CreateNewQingdan()
+        private void CreateNewQingdan(string qingdanCategory)
         {
-            var f2 = new Form2("");
+            var f2 = new Form2("", qingdanCategory);
             f2.DataImported += () => _reloadAll();
             f2.Show();
         }
