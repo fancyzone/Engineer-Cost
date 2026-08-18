@@ -12,6 +12,7 @@ namespace 施工定额.Entity
         private decimal _定额单价;
         private decimal _定额合价;
         private decimal _换算系数 = 1m;
+        private string _定额名称 = "";
 
         public decimal 定额工程量
         {
@@ -73,7 +74,21 @@ namespace 施工定额.Entity
         public string ID号 { get; set; } = "";
         public string 清单编码 { get; set; } = "";
         public string 定额编码 { get; set; } = "";
-        public string 定额名称 { get; set; } = "";
+
+        public string 定额名称
+        {
+            get => _定额名称;
+            set
+            {
+                var v = value ?? "";
+                if (_定额名称 != v)
+                {
+                    _定额名称 = v;
+                    OnPropertyChanged(nameof(定额名称));
+                }
+            }
+        }
+
         public string 定额单位 { get; set; } = "";
 
         public List<Xiaohaoliang> 消耗量列表 { get; set; } = new List<Xiaohaoliang>();

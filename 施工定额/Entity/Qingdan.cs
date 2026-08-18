@@ -11,6 +11,8 @@ namespace 施工定额.Entity
         private decimal _工程量;
         private decimal _综合单价;
         private decimal _综合合价;
+        private string _清单名称 = "";
+        private string _项目特征 = "";
 
         public decimal 工程量
         {
@@ -49,11 +51,48 @@ namespace 施工定额.Entity
                 }
             }
         }
-        public string 清单编码 { get; set; }
-        public string 清单名称 { get; set; }
-        public string 项目特征 { get; set; }
-        public string 单位 { get; set; }
+
+        public string 清单编码 { get; set; } = "";
+
+        public string 清单名称
+        {
+            get => _清单名称;
+            set
+            {
+                var v = value ?? "";
+                if (_清单名称 != v)
+                {
+                    _清单名称 = v;
+                    OnPropertyChanged(nameof(清单名称));
+                }
+            }
+        }
+
+        public string 项目特征
+        {
+            get => _项目特征;
+            set
+            {
+                var v = value ?? "";
+                if (_项目特征 != v)
+                {
+                    _项目特征 = v;
+                    OnPropertyChanged(nameof(项目特征));
+                }
+            }
+        }
+
+        public string 单位 { get; set; } = "";
         public int Level { get; set; }
+
+        /// <summary>
+        /// 0=分部分项，1=单价措施，2=总价措施。见 <see cref="QingdanCategory"/>。
+        /// </summary>
+        public int 项目类别 { get; set; } = QingdanCategory.分部分项;
+
+        /// <summary>界面显示用类别名称。</summary>
+        public string 项目类别名称 => QingdanCategory.ToDisplayName(项目类别);
+
         public List<Dinge> 定额列表 { get; set; } = new List<Dinge>();
 
         /// <summary>
