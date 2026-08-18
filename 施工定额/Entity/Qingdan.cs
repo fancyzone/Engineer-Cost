@@ -86,12 +86,9 @@ namespace 施工定额.Entity
         public int Level { get; set; }
 
         /// <summary>
-        /// 0=分部分项，1=单价措施，2=总价措施。见 <see cref="QingdanCategory"/>。
+        /// 分部分项 / 措施项目 / 其他项目。见 <see cref="QingdanCategory"/>。
         /// </summary>
-        public int 项目类别 { get; set; } = QingdanCategory.分部分项;
-
-        /// <summary>界面显示用类别名称。</summary>
-        public string 项目类别名称 => QingdanCategory.ToDisplayName(项目类别);
+        public string 项目类别 { get; set; } = QingdanCategory.分部分项;
 
         public List<Dinge> 定额列表 { get; set; } = new List<Dinge>();
 
