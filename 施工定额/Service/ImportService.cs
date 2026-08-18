@@ -17,10 +17,12 @@ namespace 施工定额.Service
 
         /// <summary>
         /// 从系统库导入一条清单（连同它下属的所有定额和消耗量）到用户库。
-        /// 默认项目类别为分部分项；若需导入为措施，调用方应在导入后更新类别。
         /// </summary>
-        public void ImportQingdan(string sysQingdanCode, string name, string feature, string unit)
+        /// <param name="category">项目类别；空则默认「分部分项」。</param>
+        public void ImportQingdan(string sysQingdanCode, string name, string feature, string unit,
+            string? category = null)
         {
+            var resolvedCategory = QingdanCategory.Normalize(category);
             List<Dinge> sysDingeList;
             List<Xiaohaoliang> sysXhlList;
 
@@ -74,9 +76,8 @@ namespace 施工定额.Service
                         清单名称 = name,
                         项目特征 = feature,
                         单位 = unit,
-                        项目类别 = QingdanCategory.分部分项
-                    },
-                    tx);
+                        项目类别 = resolvedCategory
+                    }, tx);
 
                 if (sysDingeList.Count > 0)
                     userConn.Execute(@"
@@ -145,9 +146,8 @@ namespace 施工定额.Service
                 xhl.定额ID = newId;
                 xhl.清单编码 = targetQingdanCode;
                 xhl.定额编码 = dingeCode;
-                xhl.市场价 = xhl.定额基价;
                 xhl.数量 = xhl.含量 * qingdanWorkAmount;
-                xhl.市场价合计 = Math.Round(xhl.市场价 * xhl.数量, 2);
+                xhl.市场价合计 = xhl.数量 * xhl.市场价;
             }
 
             using var userConn = new SqliteConnection(_userConn);
@@ -156,10 +156,10 @@ namespace 施工定额.Service
             try
             {
                 userConn.Execute(@"
-                        INSERT INTO 定额_市政工程
-                            (ID号, 清单编码, 定额编码, 定额名称, 定额单位, 定额工程量, 定额单价, 定额合价, 换算系数)
-                        VALUES
-                            (@ID号, @清单编码, @定额编码, @定额名称, @定额单位, @定额工程量, 0, 0, 1)",
+                    INSERT INTO 定额_市政工程
+                        (ID号, 清单编码, 定额编码, 定额名称, 定额单位, 定额工程量, 定额单价, 定额合价, 换算系数)
+                    VALUES
+                        (@ID号, @清单编码, @定额编码, @定额名称, @定额单位, @定额工程量, 0, 0, 1)",
                     new
                     {
                         ID号 = newId,
@@ -168,16 +168,15 @@ namespace 施工定额.Service
                         定额名称 = name,
                         定额单位 = unit,
                         定额工程量 = qingdanWorkAmount
-                    },
-                    tx);
+                    }, tx);
 
                 userConn.Execute(@"
-                        INSERT OR IGNORE INTO 消耗量
-                            (定额ID, 清单编码, 定额编码, 消耗量类别, 消耗量编码, 消耗量名称,
-                                规格型号, 消耗量单位, 含量, 数量, 定额基价, 市场价, 市场价合计)
-                        VALUES
-                            (@定额ID, @清单编码, @定额编码, @消耗量类别, @消耗量编码, @消耗量名称,
-                                @规格型号, @消耗量单位, @含量, @数量, @定额基价, @市场价, @市场价合计)",
+                    INSERT OR IGNORE INTO 消耗量
+                        (定额ID, 清单编码, 定额编码, 消耗量类别, 消耗量编码, 消耗量名称,
+                         规格型号, 消耗量单位, 含量, 数量, 定额基价, 市场价, 市场价合计)
+                    VALUES
+                        (@定额ID, @清单编码, @定额编码, @消耗量类别, @消耗量编码, @消耗量名称,
+                         @规格型号, @消耗量单位, @含量, @数量, @定额基价, @市场价, @市场价合计)",
                     sysXhlList, tx);
 
                 tx.Commit();
