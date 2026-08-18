@@ -69,11 +69,14 @@ namespace 施工定额
         {
             foreach (var (code, name) in Defaults)
             {
+                // 清单编码无唯一约束，不能用 INSERT OR IGNORE
                 conn.Execute(
-                    @"INSERT OR IGNORE INTO 清单
+                    @"INSERT INTO 清单
                         (清单编码, 清单名称, 项目特征, 单位, 工程量, 综合单价, 综合合价, 项目类别)
-                      VALUES
-                        (@Code, @Name, '', '', 0, 0, 0, @Cat)",
+                      SELECT @Code, @Name, '', '', 0, 0, 0, @Cat
+                      WHERE NOT EXISTS (
+                        SELECT 1 FROM 清单 WHERE 清单编码 = @Code AND 项目类别 = @Cat
+                      )",
                     new { Code = code, Name = name, Cat = QingdanCategory.其他项目 });
             }
 

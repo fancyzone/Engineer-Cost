@@ -67,14 +67,32 @@ END;";
                 ("QT-JRG", "计日工"),
             };
 
+            // 先去掉历史重复行（清单编码无唯一约束，旧版 INSERT OR IGNORE 会插多份）
+            using (var dedupe = conn.CreateCommand())
+            {
+                dedupe.CommandText = @"
+DELETE FROM ""清单""
+WHERE ""项目类别"" = '其他项目'
+  AND rowid NOT IN (
+    SELECT MIN(rowid) FROM ""清单""
+    WHERE ""项目类别"" = '其他项目'
+    GROUP BY ""清单编码""
+  );";
+                var removed = dedupe.ExecuteNonQuery();
+                if (removed > 0)
+                    AppLogger.Info($"其他项目重复行已清理 {removed} 条");
+            }
+
             foreach (var (code, name) in seeds)
             {
                 using var ins = conn.CreateCommand();
                 ins.CommandText = @"
-INSERT OR IGNORE INTO ""清单""
+INSERT INTO ""清单""
   (""清单编码"", ""清单名称"", ""项目特征"", ""单位"", ""工程量"", ""综合单价"", ""综合合价"", ""项目类别"")
-VALUES
-  ($c, $n, '', '', 0, 0, 0, '其他项目')";
+SELECT $c, $n, '', '', 0, 0, 0, '其他项目'
+WHERE NOT EXISTS (
+  SELECT 1 FROM ""清单"" WHERE ""清单编码"" = $c AND ""项目类别"" = '其他项目'
+);";
                 ins.Parameters.AddWithValue("$c", code);
                 ins.Parameters.AddWithValue("$n", name);
                 ins.ExecuteNonQuery();
