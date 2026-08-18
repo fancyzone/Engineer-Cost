@@ -369,7 +369,7 @@ namespace 施工定额
             if (dataGridView_measure != null)
             {
                 GridManager.BindOnce(dataGridView_measure, _measureQingdanList, GridColumns.MeasureQingdan);
-                dataGridView_measure.ContextMenuStrip = _menuBuilder.BuildQingdanMenu(dataGridView_measure);
+                dataGridView_measure.ContextMenuStrip = _menuBuilder.BuildQingdanMenu(dataGridView_measure, QingdanCategory.措施项目);
             }
 
             if (DataGridView_measure_dinge != null)
@@ -381,7 +381,6 @@ namespace 施工定额
             switch (type)
             {
                 case DisplayType.Qingdan:
-                    // BindingList 已持有同一对象引用，属性变更会自动刷新
                     break;
 
                 case DisplayType.Dinge:
@@ -595,7 +594,6 @@ namespace 施工定额
                 }
                 else if (colName == "定额名称")
                 {
-                    // 仅改名称，持久化即可
                     _qingdanPresenter.OnDingeChanged(currentQd);
                 }
                 else
@@ -668,7 +666,6 @@ namespace 施工定额
                     return;
                 }
 
-                // 清单名称、项目特征等文本字段
                 _qingdanPresenter.SaveQingdanFields(changedQd);
             }
             catch (Exception ex)
