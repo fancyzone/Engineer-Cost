@@ -87,10 +87,10 @@ namespace 施工定额.UI
                     Alignment = DataGridViewContentAlignment.MiddleRight },
         };
 
-        /// <summary>措施项目清单列（多一列类别）。</summary>
+        /// <summary>措施项目清单列。</summary>
         public static List<ColumnConfig> MeasureQingdan => new List<ColumnConfig>
         {
-            new() { FieldName = "项目类别名称", HeaderText = "类别",       Width = 90 },
+            new() { FieldName = "项目类别",     HeaderText = "类别",       Width = 90 },
             new() { FieldName = "清单编码",     HeaderText = "清单编码",   Width = 120 },
             new() { FieldName = "清单名称",     HeaderText = "清单名称",   Width = 200, ReadOnly = false },
             new() { FieldName = "项目特征",     HeaderText = "项目特征",   Width = 250, WrapMode = true, ReadOnly = false },
@@ -121,19 +121,21 @@ namespace 施工定额.UI
                     ReadOnly = false,
                     Format = "N4",
                     Alignment = DataGridViewContentAlignment.MiddleRight },
-            new() { FieldName = "定额单价",   HeaderText = "定额单价",   Width = 120,
+            new() { FieldName = "定额单价",   HeaderText = "单价",       Width = 100,
                     Format = "N2",
                     Alignment = DataGridViewContentAlignment.MiddleRight },
-            new() { FieldName = "定额合价",   HeaderText = "定额合价",   Width = 120,
+            new() { FieldName = "定额合价",   HeaderText = "合价",       Width = 120,
                     Format = "N2",
                     Alignment = DataGridViewContentAlignment.MiddleRight },
         };
 
         public static List<ColumnConfig> Xiaohaoliang => new List<ColumnConfig>
         {
-            new() { FieldName = "消耗量类别", HeaderText = "类别",   Width = 60  },
-            new() { FieldName = "消耗量名称", HeaderText = "名称",   Width = 200 },
-            new() { FieldName = "消耗量单位", HeaderText = "单位",   Width = 60  },
+            new() { FieldName = "消耗量类别", HeaderText = "类别",   Width = 60 },
+            new() { FieldName = "消耗量编码", HeaderText = "编码",   Width = 100 },
+            new() { FieldName = "消耗量名称", HeaderText = "名称",   Width = 160 },
+            new() { FieldName = "规格型号",   HeaderText = "规格",   Width = 100 },
+            new() { FieldName = "消耗量单位", HeaderText = "单位",   Width = 60 },
             new() { FieldName = "含量",       HeaderText = "含量",   Width = 80,
                     ReadOnly = false,
                     Format = "N4",
@@ -141,14 +143,11 @@ namespace 施工定额.UI
             new() { FieldName = "数量",       HeaderText = "数量",   Width = 80,
                     Format = "N4",
                     Alignment = DataGridViewContentAlignment.MiddleRight },
-            new() { FieldName = "定额基价",   HeaderText = "定额基价", Width = 100,
-                    Format = "N4",
-                    Alignment = DataGridViewContentAlignment.MiddleRight },
-            new() { FieldName = "市场价",     HeaderText = "市场价", Width = 100,
+            new() { FieldName = "市场价",     HeaderText = "市场价", Width = 90,
                     ReadOnly = false,
                     Format = "N2",
                     Alignment = DataGridViewContentAlignment.MiddleRight },
-            new() { FieldName = "市场价合计", HeaderText = "合计",   Width = 120,
+            new() { FieldName = "市场价合计", HeaderText = "合价",   Width = 100,
                     Format = "N2",
                     Alignment = DataGridViewContentAlignment.MiddleRight },
         };
