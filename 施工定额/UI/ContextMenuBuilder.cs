@@ -64,6 +64,9 @@ namespace 施工定额.UI
 
                 if (_selection.SelectedQingdanCode == code)
                     _selection.SelectQingdan("");
+
+                // 刷新分部分项 / 措施分类视图
+                _reloadAll();
             }
             catch (Exception ex)
             {
