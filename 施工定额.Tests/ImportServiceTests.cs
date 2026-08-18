@@ -60,7 +60,8 @@ CREATE TABLE 消耗量 (
 CREATE TABLE 清单 (
   ID号 INTEGER PRIMARY KEY AUTOINCREMENT,
   清单编码 TEXT, 清单名称 TEXT, 项目特征 TEXT, 单位 TEXT,
-  工程量 REAL, 综合单价 REAL, 综合合价 REAL
+  工程量 REAL, 综合单价 REAL, 综合合价 REAL,
+  项目类别 INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE 定额_市政工程 (
   ID号 TEXT NOT NULL UNIQUE,
@@ -100,6 +101,9 @@ VALUES ('sys-dg-1', 'Q-SYS', 'D-100', '人', 'L1', '普工', '工日', 2, 0, 100
             var qdCount = conn.ExecuteScalar<int>("SELECT COUNT(1) FROM 清单 WHERE 清单编码='Q-SYS'");
             Assert.Equal(1, qdCount);
 
+            var category = conn.ExecuteScalar<int>("SELECT 项目类别 FROM 清单 WHERE 清单编码='Q-SYS'");
+            Assert.Equal(0, category);
+
             var dgId = conn.ExecuteScalar<string>("SELECT ID号 FROM 定额_市政工程 WHERE 清单编码='Q-SYS'");
             Assert.False(string.IsNullOrEmpty(dgId));
             Assert.NotEqual("sys-dg-1", dgId);
@@ -117,8 +121,8 @@ VALUES ('sys-dg-1', 'Q-SYS', 'D-100', '人', 'L1', '普工', '工日', 2, 0, 100
             using (var conn = new SqliteConnection(_userConn))
             {
                 conn.Open();
-                conn.Execute(@"INSERT INTO 清单 (清单编码, 清单名称, 单位, 工程量, 综合单价, 综合合价)
-VALUES ('Q-USER', '用户清单', 'm3', 5, 0, 0)");
+                conn.Execute(@"INSERT INTO 清单 (清单编码, 清单名称, 单位, 工程量, 综合单价, 综合合价, 项目类别)
+VALUES ('Q-USER', '用户清单', 'm3', 5, 0, 0, 0)");
             }
 
             _svc.ImportDinge("Q-USER", "sys-dg-1", "D-100", "挖土", "m3");
@@ -132,7 +136,7 @@ VALUES ('Q-USER', '用户清单', 'm3', 5, 0, 0)");
             Assert.Equal(5m, work);
 
             var qty = user.ExecuteScalar<decimal>("SELECT 数量 FROM 消耗量 WHERE 清单编码='Q-USER'");
-            Assert.Equal(10m, qty); // 含量2 * 工程量5
+            Assert.Equal(10m, qty);
         }
 
         [Fact]
@@ -141,8 +145,8 @@ VALUES ('Q-USER', '用户清单', 'm3', 5, 0, 0)");
             using (var conn = new SqliteConnection(_userConn))
             {
                 conn.Open();
-                conn.Execute(@"INSERT INTO 清单 (清单编码, 清单名称, 单位, 工程量, 综合单价, 综合合价)
-VALUES ('Q-USER', '用户清单', 'm3', 1, 0, 0)");
+                conn.Execute(@"INSERT INTO 清单 (清单编码, 清单名称, 单位, 工程量, 综合单价, 综合合价, 项目类别)
+VALUES ('Q-USER', '用户清单', 'm3', 1, 0, 0, 0)");
             }
 
             Assert.Throws<InvalidOperationException>(() =>
