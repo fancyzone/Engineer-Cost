@@ -33,5 +33,8 @@ namespace 施工定额.Entity
 
         public static bool IsFenBu(string? category) =>
             Normalize(category) == 分部分项;
+
+        public static bool IsOther(string? category) =>
+            Normalize(category) == 其他项目;
     }
 }
