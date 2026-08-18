@@ -211,6 +211,7 @@ CREATE TABLE IF NOT EXISTS ""清单"" (
 	""综合单价""	REAL,
 	""综合合价""	REAL,
 	""Level""	TEXT,
+	""项目类别""	TEXT NOT NULL DEFAULT '分部分项',
 	PRIMARY KEY(""ID号"" AUTOINCREMENT)
 );
 

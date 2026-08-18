@@ -116,8 +116,7 @@ namespace 施工定额
         private void dataGridView_other_CellBeginEdit(object? sender, DataGridViewCellCancelEventArgs e)
         {
             if (e.RowIndex < 0 || e.RowIndex >= _otherItems.Count) return;
-            var item = _otherItems[e.RowIndex];
-            if (!item.可编辑 || item.名称 == "暂估价")
+            if (!_otherItems[e.RowIndex].IsAmountEditable)
                 e.Cancel = true;
         }
 
@@ -125,14 +124,14 @@ namespace 施工定额
         {
             if (_otherRepo == null || e.RowIndex < 0 || e.RowIndex >= _otherItems.Count) return;
             var item = _otherItems[e.RowIndex];
-            if (!item.可编辑 || item.名称 == "暂估价")
+            if (!item.IsAmountEditable)
             {
                 item.金额 = 0;
                 return;
             }
             try
             {
-                _otherRepo.SaveAmount(item.名称, item.金额);
+                _otherRepo.SaveAmount(item.清单编码, item.金额);
             }
             catch (Exception ex)
             {

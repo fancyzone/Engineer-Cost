@@ -19,7 +19,7 @@ namespace 施工定额.Helper
                 EnsureColumn(conn, "定额_市政工程", "换算系数", "REAL NOT NULL DEFAULT 1");
                 EnsureColumn(conn, "清单", "项目类别", "TEXT NOT NULL DEFAULT '分部分项'");
                 NormalizeQingdanCategory(conn);
-                EnsureOtherProjectTable(conn);
+                SeedOtherItemsInQingdan(conn);
                 EnsureIndex(conn, "idx_定额_清单编码",
                     "CREATE INDEX IF NOT EXISTS \"idx_定额_清单编码\" ON \"定额_市政工程\"(\"清单编码\")");
                 EnsureIndex(conn, "idx_消耗量_清单编码",
@@ -54,39 +54,62 @@ END;";
             cmd.ExecuteNonQuery();
         }
 
-        private static void EnsureOtherProjectTable(SqliteConnection conn)
+        /// <summary>
+        /// 其他项目并入清单表（项目类别=其他项目）；若存在旧「其他项目」表则迁金额后删除。
+        /// </summary>
+        private static void SeedOtherItemsInQingdan(SqliteConnection conn)
         {
-            using (var create = conn.CreateCommand())
+            var seeds = new (string code, string name)[]
             {
-                create.CommandText = @"
-CREATE TABLE IF NOT EXISTS ""其他项目"" (
-  ""名称"" TEXT NOT NULL PRIMARY KEY,
-  ""金额"" REAL NOT NULL DEFAULT 0,
-  ""可编辑"" INTEGER NOT NULL DEFAULT 1
-);";
-                create.ExecuteNonQuery();
-            }
-
-            var seeds = new (string name, int editable)[]
-            {
-                ("暂列金额", 1),
-                ("暂估价", 0),
-                ("总承包服务费", 1),
-                ("计日工", 1),
+                ("QT-ZJJE", "暂列金额"),
+                ("QT-ZGJ", "暂估价"),
+                ("QT-ZCB", "总承包服务费"),
+                ("QT-JRG", "计日工"),
             };
-            foreach (var (name, editable) in seeds)
+
+            foreach (var (code, name) in seeds)
             {
                 using var ins = conn.CreateCommand();
-                ins.CommandText =
-                    @"INSERT OR IGNORE INTO ""其他项目"" (""名称"", ""金额"", ""可编辑"") VALUES ($n, 0, $e)";
+                ins.CommandText = @"
+INSERT OR IGNORE INTO ""清单""
+  (""清单编码"", ""清单名称"", ""项目特征"", ""单位"", ""工程量"", ""综合单价"", ""综合合价"", ""项目类别"")
+VALUES
+  ($c, $n, '', '', 0, 0, 0, '其他项目')";
+                ins.Parameters.AddWithValue("$c", code);
                 ins.Parameters.AddWithValue("$n", name);
-                ins.Parameters.AddWithValue("$e", editable);
                 ins.ExecuteNonQuery();
             }
 
-            using var lockZg = conn.CreateCommand();
-            lockZg.CommandText = @"UPDATE ""其他项目"" SET ""金额""=0, ""可编辑""=0 WHERE ""名称""='暂估价'";
-            lockZg.ExecuteNonQuery();
+            using var zg = conn.CreateCommand();
+            zg.CommandText = @"UPDATE ""清单"" SET ""综合合价""=0 WHERE ""清单编码""='QT-ZGJ' AND ""项目类别""='其他项目'";
+            zg.ExecuteNonQuery();
+
+            using (var check = conn.CreateCommand())
+            {
+                check.CommandText = "SELECT COUNT(1) FROM sqlite_master WHERE type='table' AND name='其他项目'";
+                var exists = Convert.ToInt32(check.ExecuteScalar());
+                if (exists > 0)
+                {
+                    foreach (var (code, name) in seeds)
+                    {
+                        using var sel = conn.CreateCommand();
+                        sel.CommandText = @"SELECT ""金额"" FROM ""其他项目"" WHERE ""名称""=$n";
+                        sel.Parameters.AddWithValue("$n", name);
+                        var val = sel.ExecuteScalar();
+                        if (val == null || val is DBNull) continue;
+                        var amt = code == "QT-ZGJ" ? 0m : Convert.ToDecimal(val);
+                        using var upd = conn.CreateCommand();
+                        upd.CommandText = @"UPDATE ""清单"" SET ""综合合价""=$a WHERE ""清单编码""=$c AND ""项目类别""='其他项目'";
+                        upd.Parameters.AddWithValue("$a", amt);
+                        upd.Parameters.AddWithValue("$c", code);
+                        upd.ExecuteNonQuery();
+                    }
+                    using var drop = conn.CreateCommand();
+                    drop.CommandText = "DROP TABLE IF EXISTS \"其他项目\"";
+                    drop.ExecuteNonQuery();
+                    AppLogger.Info("已将旧「其他项目」表数据迁入清单并删除旧表");
+                }
+            }
         }
 
         private static void EnsureUniqueXiaohaoliangIndex(SqliteConnection conn)

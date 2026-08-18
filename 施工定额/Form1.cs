@@ -63,6 +63,8 @@ namespace 施工定额
                 _measureQingdanList.Clear();
                 foreach (var qd in _allQingdan)
                 {
+                    if (QingdanCategory.IsOther(qd.项目类别))
+                        continue; // 其他项目走独立 Tab
                     if (QingdanCategory.IsMeasure(qd.项目类别))
                         _measureQingdanList.Add(qd);
                     else
