@@ -11,11 +11,31 @@ namespace 施工定额
         private DataGridView? dataGridView_other;
         private readonly BindingList<OtherProjectItem> _otherItems = new BindingList<OtherProjectItem>();
         private OtherProjectRepository? _otherRepo;
+        private bool _otherItemsInitialized;
 
-        private void InitOtherItemsSupport()
+        protected override void OnLoad(EventArgs e)
         {
-            _otherRepo = new OtherProjectRepository(AppConfig.UserDbConn);
-            EnsureOtherItemsTab();
+            base.OnLoad(e);
+            EnsureOtherItemsInitialized();
+        }
+
+        private void EnsureOtherItemsInitialized()
+        {
+            if (_otherItemsInitialized || IsDisposed)
+                return;
+            _otherItemsInitialized = true;
+
+            try
+            {
+                _otherRepo = new OtherProjectRepository(AppConfig.UserDbConn);
+                EnsureOtherItemsTab();
+                BindOtherItemsGrid();
+                LoadOtherItems();
+            }
+            catch (Exception ex)
+            {
+                ErrorHandler.Show(ex, "初始化其他项目失败");
+            }
         }
 
         private void EnsureOtherItemsTab()
@@ -56,6 +76,8 @@ namespace 施工定额
         private void BindOtherItemsGrid()
         {
             if (dataGridView_other == null) return;
+            if (dataGridView_other.DataSource != null) return;
+
             GridManager.BindOnce(dataGridView_other, _otherItems, new List<ColumnConfig>
             {
                 new() { FieldName = "名称", HeaderText = "名称", Width = 180, ReadOnly = true },
