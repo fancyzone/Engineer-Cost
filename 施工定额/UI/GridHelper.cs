@@ -59,10 +59,31 @@ namespace 施工定额.UI
 
                 dgv.DataSource = bindingList;
                 dgv.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
+                dgv.DefaultCellStyle.WrapMode = DataGridViewTriState.True;
+
+                // 项目特征等换行列：编辑时支持多行输入
+                dgv.EditingControlShowing -= Grid_EditingControlShowing_Multiline;
+                dgv.EditingControlShowing += Grid_EditingControlShowing_Multiline;
             }
             finally
             {
                 dgv.ResumeLayout();
+            }
+        }
+
+        private static void Grid_EditingControlShowing_Multiline(object? sender, DataGridViewEditingControlShowingEventArgs e)
+        {
+            if (sender is not DataGridView dgv) return;
+            if (dgv.CurrentCell == null) return;
+            var col = dgv.Columns[dgv.CurrentCell.ColumnIndex];
+            bool wrap = col.DefaultCellStyle.WrapMode == DataGridViewTriState.True
+                        || string.Equals(col.Name, "项目特征", StringComparison.Ordinal)
+                        || string.Equals(col.DataPropertyName, "项目特征", StringComparison.Ordinal);
+            if (wrap && e.Control is TextBox tb)
+            {
+                tb.Multiline = true;
+                tb.AcceptsReturn = true;
+                tb.WordWrap = true;
             }
         }
     }
@@ -87,7 +108,6 @@ namespace 施工定额.UI
                     Alignment = DataGridViewContentAlignment.MiddleRight },
         };
 
-        /// <summary>措施项目清单列。</summary>
         public static List<ColumnConfig> MeasureQingdan => new List<ColumnConfig>
         {
             new() { FieldName = "项目类别",     HeaderText = "类别",       Width = 90 },

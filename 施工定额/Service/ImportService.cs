@@ -65,14 +65,21 @@ namespace 施工定额.Service
             using var tx = userConn.BeginTransaction();
             try
             {
+                string userCode = AllocateUniqueQingdanCode(userConn, tx, sysQingdanCode);
+
+                foreach (var dg in sysDingeList)
+                    dg.清单编码 = userCode;
+                foreach (var xhl in sysXhlList)
+                    xhl.清单编码 = userCode;
+
                 userConn.Execute(@"
-                    INSERT OR IGNORE INTO 清单
+                    INSERT INTO 清单
                         (清单编码, 清单名称, 项目特征, 单位, 工程量, 综合单价, 综合合价, 项目类别)
                     VALUES
                         (@清单编码, @清单名称, @项目特征, @单位, 0, 0, 0, @项目类别)",
                     new
                     {
-                        清单编码 = sysQingdanCode,
+                        清单编码 = userCode,
                         清单名称 = name,
                         项目特征 = feature,
                         单位 = unit,
@@ -104,6 +111,46 @@ namespace 施工定额.Service
                 tx.Rollback();
                 throw;
             }
+        }
+
+        private static string AllocateUniqueQingdanCode(SqliteConnection conn, SqliteTransaction tx, string sysCode)
+        {
+            if (string.IsNullOrWhiteSpace(sysCode))
+                throw new ArgumentException("系统清单编码不能为空", nameof(sysCode));
+
+            var baseCode = sysCode.Trim();
+            var existing = conn.Query<string>(
+                @"SELECT 清单编码 FROM 清单
+                  WHERE 清单编码 = @Base OR 清单编码 LIKE @Prefix",
+                new { Base = baseCode, Prefix = baseCode + "%" }, tx).ToList();
+
+            int maxSeq = 0;
+            foreach (var code in existing)
+            {
+                if (string.IsNullOrEmpty(code)) continue;
+                if (code.Length == baseCode.Length + 3
+                    && code.StartsWith(baseCode, StringComparison.Ordinal)
+                    && int.TryParse(code.AsSpan(baseCode.Length, 3), out var seq))
+                {
+                    if (seq > maxSeq) maxSeq = seq;
+                }
+            }
+
+            for (int i = 1; i <= 999; i++)
+            {
+                int next = maxSeq + i;
+                if (next > 999)
+                    throw new InvalidOperationException(
+                        $"清单编码 {baseCode} 的流水号已超过 999，无法继续插入。");
+                string candidate = baseCode + next.ToString("D3");
+                var hit = conn.ExecuteScalar<int>(
+                    "SELECT COUNT(1) FROM 清单 WHERE 清单编码 = @C",
+                    new { C = candidate }, tx);
+                if (hit == 0)
+                    return candidate;
+            }
+
+            throw new InvalidOperationException($"无法为 {baseCode} 分配唯一清单编码。");
         }
 
         public void ImportDinge(string targetQingdanCode, string sysId, string dingeCode, string name, string unit)

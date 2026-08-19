@@ -22,11 +22,19 @@ namespace 施工定额
         public void RecalculateAll(List<Qingdan> qingdanList)
         {
             foreach (var qd in qingdanList)
+            {
+                // 其他项目金额由用户直接填写综合合价，不走定额重算
+                if (QingdanCategory.IsOther(qd.项目类别))
+                    continue;
                 RecalculateQingdan(qd);
+            }
         }
 
         public void RecalculateQingdan(Qingdan qd)
         {
+            if (QingdanCategory.IsOther(qd.项目类别))
+                return;
+
             foreach (var dg in qd.定额列表)
                 RecalculateDinge(dg);
 
@@ -109,9 +117,10 @@ namespace 施工定额
         public ProjectCostSummary CalculateProjectSummary(IEnumerable<Qingdan> qingdanList)
         {
             var list = qingdanList.ToList();
-            decimal fenbu = list.Where(q => q.项目类别 == QingdanCategory.分部分项).Sum(q => q.综合合价);
+            decimal fenbu = list.Where(q => QingdanCategory.IsFenBu(q.项目类别)).Sum(q => q.综合合价);
             decimal measure = list.Where(q => QingdanCategory.IsMeasure(q.项目类别)).Sum(q => q.综合合价);
-            decimal billTotal = fenbu + measure;
+            decimal other = list.Where(q => QingdanCategory.IsOther(q.项目类别)).Sum(q => q.综合合价);
+            decimal billTotal = fenbu + measure + other;
 
             decimal labor = list.Sum(q => q.费用构成.人工费);
             decimal material = list.Sum(q => q.费用构成.材料费);
@@ -130,6 +139,7 @@ namespace 施工定额
             {
                 分部分项合价 = fenbu,
                 措施项目合价 = measure,
+                其他项目合价 = other,
                 人工费 = labor,
                 材料费 = material,
                 机械费 = machine,

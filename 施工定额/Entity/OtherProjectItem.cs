@@ -12,7 +12,7 @@ namespace 施工定额.Entity
         private string _名称 = "";
         private decimal _金额;
 
-        /// <summary>固定名称：暂列金额 / 暂估价 / 总承包服务费 / 计日工。</summary>
+        /// <summary>名称：暂列金额 / 暂估价 / 自定义…</summary>
         public string 名称
         {
             get => _名称;
@@ -29,7 +29,10 @@ namespace 施工定额.Entity
         /// <summary>内部稳定编码，对应清单编码。</summary>
         public string 清单编码 { get; set; } = "";
 
-        /// <summary>暂估价暂不可改（功能未做）。</summary>
-        public bool IsAmountEditable => 名称 != "暂估价";
+        /// <summary>暂估价暂不可改金额（功能未做）。</summary>
+        public bool IsAmountEditable => 名称 != "暂估价" && 清单编码 != "QT-ZGJ";
+
+        /// <summary>名称是否可改（暂估价固定）。</summary>
+        public bool IsNameEditable => 清单编码 != "QT-ZGJ" && 名称 != "暂估价";
     }
 }

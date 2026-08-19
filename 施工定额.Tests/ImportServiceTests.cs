@@ -98,13 +98,16 @@ VALUES ('sys-dg-1', 'Q-SYS', 'D-100', '人', 'L1', '普工', '工日', 2, 0, 100
             using var conn = new SqliteConnection(_userConn);
             conn.Open();
 
-            var qdCount = conn.ExecuteScalar<int>("SELECT COUNT(1) FROM 清单 WHERE 清单编码='Q-SYS'");
+            var userCode = conn.ExecuteScalar<string>("SELECT 清单编码 FROM 清单 WHERE 清单编码 LIKE 'Q-SYS%'");
+            Assert.Equal("Q-SYS001", userCode);
+
+            var qdCount = conn.ExecuteScalar<int>("SELECT COUNT(1) FROM 清单 WHERE 清单编码='Q-SYS001'");
             Assert.Equal(1, qdCount);
 
-            var category = conn.ExecuteScalar<string>("SELECT 项目类别 FROM 清单 WHERE 清单编码='Q-SYS'");
+            var category = conn.ExecuteScalar<string>("SELECT 项目类别 FROM 清单 WHERE 清单编码='Q-SYS001'");
             Assert.Equal("分部分项", category);
 
-            var dgId = conn.ExecuteScalar<string>("SELECT ID号 FROM 定额_市政工程 WHERE 清单编码='Q-SYS'");
+            var dgId = conn.ExecuteScalar<string>("SELECT ID号 FROM 定额_市政工程 WHERE 清单编码='Q-SYS001'");
             Assert.False(string.IsNullOrEmpty(dgId));
             Assert.NotEqual("sys-dg-1", dgId);
 
@@ -113,6 +116,19 @@ VALUES ('sys-dg-1', 'Q-SYS', 'D-100', '人', 'L1', '普工', '工日', 2, 0, 100
 
             var factor = conn.ExecuteScalar<decimal>("SELECT 换算系数 FROM 定额_市政工程 WHERE ID号=@Id", new { Id = dgId });
             Assert.Equal(1m, factor);
+        }
+
+        [Fact]
+        public void ImportQingdan_SecondInsert_GetsNextSequence()
+        {
+            _svc.ImportQingdan("Q-SYS", "系统清单", "特征A", "m3");
+            _svc.ImportQingdan("Q-SYS", "系统清单", "特征A", "m3");
+
+            using var conn = new SqliteConnection(_userConn);
+            var codes = conn.Query<string>("SELECT 清单编码 FROM 清单 WHERE 清单编码 LIKE 'Q-SYS%' ORDER BY 清单编码").ToList();
+            Assert.Equal(2, codes.Count);
+            Assert.Equal("Q-SYS001", codes[0]);
+            Assert.Equal("Q-SYS002", codes[1]);
         }
 
         [Fact]
