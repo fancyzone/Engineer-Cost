@@ -88,15 +88,17 @@ namespace 施工定额
                     case "机":
                         breakdown.机械费 += x.市场价合计;
                         break;
+                    default:
+                        breakdown.材料费 += x.市场价合计;
+                        break;
                 }
             }
 
             breakdown.人工费 = Math.Round(breakdown.人工费, 2);
             breakdown.材料费 = Math.Round(breakdown.材料费, 2);
             breakdown.机械费 = Math.Round(breakdown.机械费, 2);
-            breakdown.直接费 = breakdown.人工费 + breakdown.材料费 + breakdown.机械费;
 
-            var overheadBase = string.Equals(_rates.OverheadBase, "Labor", StringComparison.OrdinalIgnoreCase)
+            decimal overheadBase = string.Equals(_rates.OverheadBase, "Labor", StringComparison.OrdinalIgnoreCase)
                 ? breakdown.人工费
                 : breakdown.直接费;
 
