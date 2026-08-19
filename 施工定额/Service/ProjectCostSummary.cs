@@ -7,6 +7,7 @@ namespace 施工定额.Service
     {
         public decimal 分部分项合价 { get; set; }
         public decimal 措施项目合价 { get; set; }
+        public decimal 其他项目合价 { get; set; }
         public decimal 人工费 { get; set; }
         public decimal 材料费 { get; set; }
         public decimal 机械费 { get; set; }

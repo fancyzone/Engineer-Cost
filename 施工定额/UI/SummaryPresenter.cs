@@ -27,6 +27,7 @@ namespace 施工定额.UI
             {
                 new { Name = "分部分项费用", Price = summary.分部分项合价 },
                 new { Name = "措施项目费用", Price = summary.措施项目合价 },
+                new { Name = "其他项目费用", Price = summary.其他项目合价 },
                 new { Name = "人工费",       Price = summary.人工费 },
                 new { Name = "材料费",       Price = summary.材料费 },
                 new { Name = "机械费",       Price = summary.机械费 },
