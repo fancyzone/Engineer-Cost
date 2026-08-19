@@ -26,7 +26,7 @@ namespace 施工定额
 
         private TabPage? tabPage措施;
         private SplitContainer? measureSplit;
-        private DataGridView? dataGridView_measure;
+        private FeatureDataGridView? dataGridView_measure;
         private DataGridView? DataGridView_measure_dinge;
         private bool _suppressGridEvents;
 
@@ -77,6 +77,7 @@ namespace 施工定额
         public Form1(IQingdanRepository repo, ICostCalculationService calcService)
         {
             InitializeComponent();
+            ApplyUiFont();
             ApplyResponsiveLayout();
             EnsureMeasureTab();
             ApplyToolbarIcons();
@@ -123,7 +124,7 @@ namespace 施工定额
                 Panel2MinSize = 0
             };
 
-            dataGridView_measure = new DataGridView
+            dataGridView_measure = new FeatureDataGridView
             {
                 Dock = DockStyle.Fill,
                 Name = "dataGridView_measure",
@@ -563,6 +564,27 @@ namespace 施工定额
             toolStripButton2.DisplayStyle = ToolStripItemDisplayStyle.ImageAndText;
             toolStripButton2.TextImageRelation = TextImageRelation.ImageAboveText;
             toolStripButton2.Text = "导出";
+        }
+
+        private void ApplyUiFont()
+        {
+            var font = GridManager.UiFont;
+            Font = font;
+            if (menuStrip1 != null) menuStrip1.Font = font;
+            if (toolStrip1 != null) toolStrip1.Font = font;
+            if (tabControl1 != null) tabControl1.Font = font;
+            ApplyFontRecursive(this, font);
+        }
+
+        private static void ApplyFontRecursive(Control parent, Font font)
+        {
+            foreach (Control c in parent.Controls)
+            {
+                if (c is DataGridView) { ApplyFontRecursive(c, font); continue; }
+                try { c.Font = font; } catch { }
+                if (c.HasChildren)
+                    ApplyFontRecursive(c, font);
+            }
         }
 
         private static Bitmap CreateRefreshIcon()
