@@ -38,7 +38,14 @@ namespace 施工定额.UI
             menu.Items.Add(deleteItem);
 
             var newItem = new ToolStripMenuItem("新建清单");
-            newItem.Click += (_, _) => CreateNewQingdan(category);
+            newItem.Click += (_, _) =>
+            {
+                // 优先用网格 Tag 上的类别，避免菜单复用或绑定顺序导致类别丢失
+                var cat = category;
+                if (menu.SourceControl is DataGridView g && g.Tag is string tagCat)
+                    cat = QingdanCategory.Normalize(tagCat);
+                CreateNewQingdan(cat);
+            };
             menu.Items.Add(newItem);
 
             return menu;
@@ -72,7 +79,6 @@ namespace 施工定额.UI
                 if (_selection.SelectedQingdanCode == code)
                     _selection.SelectQingdan("");
 
-                // 刷新分部分项 / 措施分类视图
                 _reloadAll();
             }
             catch (Exception ex)
