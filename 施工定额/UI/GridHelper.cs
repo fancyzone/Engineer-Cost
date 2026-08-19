@@ -58,19 +58,17 @@ namespace 施工定额.UI
                 }
 
                 dgv.DataSource = bindingList;
-                dgv.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.DisplayedCells;
+                dgv.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCellsExceptHeaders;
                 dgv.DefaultCellStyle.WrapMode = DataGridViewTriState.True;
 
                 if (dgv.Columns.Contains("项目特征"))
                 {
-                    var feat = dgv.Columns["项目特征"];
+                    var feat = dgv.Columns["项目特征"]!;
                     feat.DefaultCellStyle.WrapMode = DataGridViewTriState.True;
                 }
 
                 dgv.EditingControlShowing -= Grid_EditingControlShowing_Multiline;
                 dgv.EditingControlShowing += Grid_EditingControlShowing_Multiline;
-                dgv.KeyDown -= Grid_KeyDown_InsertNewline;
-                dgv.KeyDown += Grid_KeyDown_InsertNewline;
             }
             finally
             {
@@ -83,34 +81,45 @@ namespace 施工定额.UI
             || string.Equals(col.Name, "项目特征", StringComparison.Ordinal)
             || string.Equals(col.DataPropertyName, "项目特征", StringComparison.Ordinal);
 
+        /// <summary>
+        /// 进入编辑时：项目特征用多行文本框；Alt+Enter 插入换行（与 Excel / 旧版一致）。
+        /// 按键挂在编辑控件上，而不是 DataGridView，否则接不到。
+        /// </summary>
         private static void Grid_EditingControlShowing_Multiline(object? sender, DataGridViewEditingControlShowingEventArgs e)
         {
             if (sender is not DataGridView dgv) return;
             if (dgv.CurrentCell == null) return;
             var col = dgv.Columns[dgv.CurrentCell.ColumnIndex];
-            if (IsFeatureColumn(col) && e.Control is TextBox tb)
-            {
-                tb.Multiline = true;
-                tb.AcceptsReturn = true;
-                tb.WordWrap = true;
-                tb.ScrollBars = ScrollBars.Vertical;
-            }
+
+            e.Control.PreviewKeyDown -= FeatureEdit_PreviewKeyDown;
+            e.Control.KeyDown -= FeatureEdit_KeyDown;
+
+            if (!IsFeatureColumn(col) || e.Control is not TextBox tb)
+                return;
+
+            tb.Multiline = true;
+            tb.AcceptsReturn = true;
+            tb.WordWrap = true;
+            tb.ScrollBars = ScrollBars.Vertical;
+
+            tb.PreviewKeyDown += FeatureEdit_PreviewKeyDown;
+            tb.KeyDown += FeatureEdit_KeyDown;
         }
 
-        private static void Grid_KeyDown_InsertNewline(object? sender, KeyEventArgs e)
+        /// <summary>让 Alt+Enter 作为输入键，避免被 DataGridView 当成结束编辑。</summary>
+        private static void FeatureEdit_PreviewKeyDown(object? sender, PreviewKeyDownEventArgs e)
         {
-            if (sender is not DataGridView dgv) return;
-            if (e.KeyCode != Keys.Enter) return;
-            if (!dgv.IsCurrentCellInEditMode || dgv.CurrentCell == null) return;
-            var col = dgv.Columns[dgv.CurrentCell.ColumnIndex];
-            if (!IsFeatureColumn(col)) return;
-            if (dgv.EditingControl is not TextBox tb) return;
+            if (e.KeyCode == Keys.Enter && (e.Modifiers & Keys.Alt) == Keys.Alt)
+                e.IsInputKey = true;
+        }
 
-            int pos = tb.SelectionStart;
-            string nl = Environment.NewLine;
-            tb.Text = tb.Text.Insert(pos, nl);
-            tb.SelectionStart = pos + nl.Length;
-            tb.SelectionLength = 0;
+        /// <summary>Alt+Enter：在光标处插入换行。</summary>
+        private static void FeatureEdit_KeyDown(object? sender, KeyEventArgs e)
+        {
+            if (e.KeyCode != Keys.Enter || !e.Alt) return;
+            if (sender is not TextBox tb) return;
+
+            tb.SelectedText = Environment.NewLine;
             e.Handled = true;
             e.SuppressKeyPress = true;
         }
@@ -166,9 +175,9 @@ namespace 施工定额.UI
                     Format = "N4",
                     Alignment = DataGridViewContentAlignment.MiddleRight },
             new() { FieldName = "定额工程量", HeaderText = "工程量",     Width = 100,
-                    ReadOnly = false,
                     Format = "N4",
-                    Alignment = DataGridViewContentAlignment.MiddleRight },
+                    Alignment = DataGridViewContentAlignment.MiddleRight,
+                    ReadOnly = false },
             new() { FieldName = "定额单价",   HeaderText = "单价",       Width = 100,
                     Format = "N2",
                     Alignment = DataGridViewContentAlignment.MiddleRight },
