@@ -11,7 +11,6 @@ namespace 施工定额
     {
         private readonly string _connStr;
 
-        /// <summary>固定四项：编码 → 名称。</summary>
         public static readonly (string Code, string Name)[] Defaults =
         {
             ("QT-ZJJE", "暂列金额"),
@@ -19,6 +18,9 @@ namespace 施工定额
             ("QT-ZCB", "总承包服务费"),
             ("QT-JRG", "计日工"),
         };
+
+        private static readonly HashSet<string> DefaultCodes =
+            new(Defaults.Select(d => d.Code), StringComparer.Ordinal);
 
         public OtherProjectRepository(string connStr)
         {
@@ -41,7 +43,8 @@ namespace 施工定额
                     WHEN 'QT-ZGJ' THEN 2
                     WHEN 'QT-ZCB' THEN 3
                     WHEN 'QT-JRG' THEN 4
-                    ELSE 99 END",
+                    ELSE 50 END,
+                    清单编码",
                 new { Cat = QingdanCategory.其他项目 }).ToList();
 
             return rows.Select(r => new OtherProjectItem
@@ -65,11 +68,77 @@ namespace 施工定额
                 new { 金额 = amount, Cat = QingdanCategory.其他项目, Key = codeOrName });
         }
 
+        public void SaveName(string code, string name)
+        {
+            if (string.IsNullOrWhiteSpace(code) || code == "QT-ZGJ")
+                return;
+            name = (name ?? "").Trim();
+            if (string.IsNullOrEmpty(name))
+                return;
+
+            using var conn = new SqliteConnection(_connStr);
+            conn.Execute(
+                @"UPDATE 清单 SET 清单名称=@Name
+                  WHERE 清单编码=@Code AND 项目类别=@Cat",
+                new { Name = name, Code = code, Cat = QingdanCategory.其他项目 });
+        }
+
+        public OtherProjectItem AddCustom(string name, decimal amount = 0)
+        {
+            name = string.IsNullOrWhiteSpace(name) ? "新增项目" : name.Trim();
+            using var conn = new SqliteConnection(_connStr);
+            conn.Open();
+            string code = AllocateCustomCode(conn);
+            conn.Execute(
+                @"INSERT INTO 清单
+                    (清单编码, 清单名称, 项目特征, 单位, 工程量, 综合单价, 综合合价, 项目类别)
+                  VALUES
+                    (@Code, @Name, '', '', 0, 0, @Amt, @Cat)",
+                new { Code = code, Name = name, Amt = amount, Cat = QingdanCategory.其他项目 });
+            return new OtherProjectItem { 清单编码 = code, 名称 = name, 金额 = amount };
+        }
+
+        public bool Delete(string code)
+        {
+            if (string.IsNullOrEmpty(code) || code == "QT-ZGJ")
+                return false;
+            using var conn = new SqliteConnection(_connStr);
+            var n = conn.Execute(
+                @"DELETE FROM 清单 WHERE 清单编码=@Code AND 项目类别=@Cat",
+                new { Code = code, Cat = QingdanCategory.其他项目 });
+            return n > 0;
+        }
+
+        public static bool IsDefaultCode(string? code) =>
+            !string.IsNullOrEmpty(code) && DefaultCodes.Contains(code);
+
+        private static string AllocateCustomCode(SqliteConnection conn)
+        {
+            var codes = conn.Query<string>(
+                @"SELECT 清单编码 FROM 清单
+                  WHERE 项目类别=@Cat AND 清单编码 LIKE 'QT-C%'",
+                new { Cat = QingdanCategory.其他项目 }).ToList();
+            int max = 0;
+            foreach (var c in codes)
+            {
+                if (c != null && c.StartsWith("QT-C", StringComparison.Ordinal)
+                    && int.TryParse(c.AsSpan(4), out var n) && n > max)
+                    max = n;
+            }
+            for (int i = 1; i < 10000; i++)
+            {
+                string candidate = "QT-C" + (max + i).ToString("D3");
+                var hit = conn.ExecuteScalar<int>(
+                    "SELECT COUNT(1) FROM 清单 WHERE 清单编码=@C", new { C = candidate });
+                if (hit == 0) return candidate;
+            }
+            throw new InvalidOperationException("无法分配其他项目编码");
+        }
+
         private static void SeedDefaults(SqliteConnection conn)
         {
             foreach (var (code, name) in Defaults)
             {
-                // 清单编码无唯一约束，不能用 INSERT OR IGNORE
                 conn.Execute(
                     @"INSERT INTO 清单
                         (清单编码, 清单名称, 项目特征, 单位, 工程量, 综合单价, 综合合价, 项目类别)
