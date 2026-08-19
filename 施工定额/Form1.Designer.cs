@@ -30,7 +30,7 @@ namespace 施工定额
             tabControl1 = new TabControl();
             tabPage1 = new TabPage();
             qingdanSplit = new SplitContainer();
-            dataGridView1 = new DataGridView();
+            dataGridView1 = new 施工定额.UI.FeatureDataGridView();
             DataGridView_dinge = new DataGridView();
             tabRenCaiJi = new TabPage();
             treeView1 = new TreeView();
@@ -75,12 +75,6 @@ namespace 施工定额
             toolStrip1.SuspendLayout();
             SuspendLayout();
 
-            //
-            // mainSplit — 左工程树 | 右内容
-            // 注意：初始化时不要设 Panel*MinSize / SplitterDistance，
-            // 控件尚未有最终尺寸时会抛「SplitterDistance 必须在 … 之间」。
-            // 比例在 Form1.Layout.ApplySplittersAfterLayout 里设置。
-            //
             mainSplit.Dock = DockStyle.Fill;
             mainSplit.FixedPanel = FixedPanel.Panel1;
             mainSplit.Name = "mainSplit";
@@ -92,9 +86,6 @@ namespace 施工定额
             mainSplit.Panel1.Controls.Add(treeProject);
             mainSplit.Panel2.Controls.Add(rightSplit);
 
-            //
-            // treeProject
-            //
             treeProject.Dock = DockStyle.Fill;
             treeProject.HideSelection = false;
             treeProject.Name = "treeProject";
@@ -103,9 +94,6 @@ namespace 施工定额
             treeProject.Nodes.AddRange(new TreeNode[] { treeNodeProject });
             treeProject.TabIndex = 0;
 
-            //
-            // rightSplit — 上主 Tab | 下工料机
-            //
             rightSplit.Dock = DockStyle.Fill;
             rightSplit.Name = "rightSplit";
             rightSplit.Orientation = Orientation.Horizontal;
@@ -116,9 +104,6 @@ namespace 施工定额
             rightSplit.Panel1.Controls.Add(tabControl1);
             rightSplit.Panel2.Controls.Add(tabControl2);
 
-            //
-            // tabControl1
-            //
             tabControl1.Controls.Add(tabPage1);
             tabControl1.Controls.Add(tabRenCaiJi);
             tabControl1.Controls.Add(tabCostSummary);
@@ -128,9 +113,6 @@ namespace 施工定额
             tabControl1.TabIndex = 0;
             tabControl1.SelectedIndexChanged += tabControl1_SelectedIndexChanged;
 
-            //
-            // tabPage1 分部分项
-            //
             tabPage1.Controls.Add(qingdanSplit);
             tabPage1.Name = "tabPage1";
             tabPage1.Padding = new Padding(3);
@@ -138,9 +120,6 @@ namespace 施工定额
             tabPage1.Text = "分部分项";
             tabPage1.UseVisualStyleBackColor = true;
 
-            //
-            // qingdanSplit — 上清单 | 下定额
-            //
             qingdanSplit.Dock = DockStyle.Fill;
             qingdanSplit.Name = "qingdanSplit";
             qingdanSplit.Orientation = Orientation.Horizontal;
@@ -151,9 +130,6 @@ namespace 施工定额
             qingdanSplit.Panel1.Controls.Add(dataGridView1);
             qingdanSplit.Panel2.Controls.Add(DataGridView_dinge);
 
-            //
-            // dataGridView1 清单
-            //
             dataGridView1.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             dataGridView1.Dock = DockStyle.Fill;
             dataGridView1.Name = "dataGridView1";
@@ -165,9 +141,6 @@ namespace 施工定额
             dataGridView1.CellEndEdit += dataGridView1_CellEndEdit;
             dataGridView1.CellValueChanged += dataGridView1_CellValueChanged;
 
-            //
-            // DataGridView_dinge 定额
-            //
             DataGridView_dinge.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             DataGridView_dinge.Dock = DockStyle.Fill;
             DataGridView_dinge.Name = "DataGridView_dinge";
@@ -176,9 +149,6 @@ namespace 施工定额
             DataGridView_dinge.CellClick += DataGridView_dinge_CellClick;
             DataGridView_dinge.CellValueChanged += DataGridView_dinge_CellValueChanged;
 
-            //
-            // tabRenCaiJi 人材机汇总
-            //
             tabRenCaiJi.Controls.Add(dataGridView3);
             tabRenCaiJi.Controls.Add(treeView1);
             tabRenCaiJi.Name = "tabRenCaiJi";
@@ -187,9 +157,6 @@ namespace 施工定额
             tabRenCaiJi.Text = "人材机汇总";
             tabRenCaiJi.UseVisualStyleBackColor = true;
 
-            //
-            // treeView1
-            //
             treeView1.Dock = DockStyle.Left;
             treeView1.Name = "treeView1";
             treeNode1.Name = "人";
@@ -205,9 +172,6 @@ namespace 施工定额
             treeView1.Width = 160;
             treeView1.AfterSelect += treeView1_AfterSelect;
 
-            //
-            // dataGridView3
-            //
             dataGridView3.AllowUserToAddRows = false;
             dataGridView3.AllowUserToDeleteRows = false;
             dataGridView3.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
@@ -217,9 +181,6 @@ namespace 施工定额
             dataGridView3.RowHeadersWidth = 51;
             dataGridView3.TabIndex = 0;
 
-            //
-            // tabCostSummary 费用汇总
-            //
             tabCostSummary.Controls.Add(dataGridView4);
             tabCostSummary.Name = "tabCostSummary";
             tabCostSummary.Padding = new Padding(3);
@@ -227,9 +188,6 @@ namespace 施工定额
             tabCostSummary.Text = "费用汇总";
             tabCostSummary.UseVisualStyleBackColor = true;
 
-            //
-            // dataGridView4
-            //
             dataGridView4.AllowUserToAddRows = false;
             dataGridView4.AllowUserToDeleteRows = false;
             dataGridView4.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
@@ -239,18 +197,12 @@ namespace 施工定额
             dataGridView4.RowHeadersWidth = 51;
             dataGridView4.TabIndex = 0;
 
-            //
-            // tabControl2 工料机
-            //
             tabControl2.Controls.Add(tabPage3);
             tabControl2.Dock = DockStyle.Fill;
             tabControl2.Name = "tabControl2";
             tabControl2.SelectedIndex = 0;
             tabControl2.TabIndex = 1;
 
-            //
-            // tabPage3
-            //
             tabPage3.Controls.Add(dataGridView2);
             tabPage3.Name = "tabPage3";
             tabPage3.Padding = new Padding(3);
@@ -258,9 +210,6 @@ namespace 施工定额
             tabPage3.Text = "工料机";
             tabPage3.UseVisualStyleBackColor = true;
 
-            //
-            // dataGridView2
-            //
             dataGridView2.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             dataGridView2.Dock = DockStyle.Fill;
             dataGridView2.Name = "dataGridView2";
@@ -268,49 +217,31 @@ namespace 施工定额
             dataGridView2.TabIndex = 0;
             dataGridView2.CellValueChanged += dataGridView2_CellValueChanged;
 
-            //
-            // menuStrip1
-            //
             menuStrip1.ImageScalingSize = new Size(20, 20);
             menuStrip1.Items.AddRange(new ToolStripItem[] { 文件ToolStripMenuItem });
             menuStrip1.Name = "menuStrip1";
             menuStrip1.TabIndex = 3;
             menuStrip1.Text = "menuStrip1";
 
-            //
-            // 文件ToolStripMenuItem
-            //
             文件ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 打开ToolStripMenuItem, 保存ToolStripMenuItem });
             文件ToolStripMenuItem.Name = "文件ToolStripMenuItem";
             文件ToolStripMenuItem.Size = new Size(53, 24);
             文件ToolStripMenuItem.Text = "文件";
 
-            //
-            // 打开ToolStripMenuItem
-            //
             打开ToolStripMenuItem.Name = "打开ToolStripMenuItem";
             打开ToolStripMenuItem.Size = new Size(122, 26);
             打开ToolStripMenuItem.Text = "打开";
 
-            //
-            // 保存ToolStripMenuItem
-            //
             保存ToolStripMenuItem.Name = "保存ToolStripMenuItem";
             保存ToolStripMenuItem.Size = new Size(122, 26);
             保存ToolStripMenuItem.Text = "保存";
 
-            //
-            // toolStrip1
-            //
             toolStrip1.ImageScalingSize = new Size(20, 20);
             toolStrip1.Items.AddRange(new ToolStripItem[] { toolStripButton1, toolStripButton2 });
             toolStrip1.Name = "toolStrip1";
             toolStrip1.TabIndex = 4;
             toolStrip1.Text = "toolStrip1";
 
-            //
-            // toolStripButton1
-            //
             toolStripButton1.Image = (Image)resources.GetObject("toolStripButton1.Image");
             toolStripButton1.ImageTransparentColor = Color.Magenta;
             toolStripButton1.Name = "toolStripButton1";
@@ -319,9 +250,6 @@ namespace 施工定额
             toolStripButton1.TextImageRelation = TextImageRelation.ImageAboveText;
             toolStripButton1.Click += toolStripButton1_Click;
 
-            //
-            // toolStripButton2
-            //
             toolStripButton2.Image = (Image)resources.GetObject("toolStripButton2.Image");
             toolStripButton2.ImageTransparentColor = Color.Magenta;
             toolStripButton2.Name = "toolStripButton2";
@@ -330,9 +258,6 @@ namespace 施工定额
             toolStripButton2.TextImageRelation = TextImageRelation.ImageAboveText;
             toolStripButton2.Click += toolStripButton2_Click;
 
-            //
-            // Form1 — 控件添加顺序：内容 → 工具栏 → 菜单（菜单最顶）
-            //
             AutoScaleDimensions = new SizeF(9F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(1400, 900);
@@ -383,7 +308,7 @@ namespace 施工定额
         private SplitContainer qingdanSplit;
         private TabControl tabControl1;
         private TabPage tabPage1;
-        private DataGridView dataGridView1;
+        private 施工定额.UI.FeatureDataGridView dataGridView1;
         private DataGridView DataGridView_dinge;
         private TabPage tabRenCaiJi;
         private TreeView treeView1;
