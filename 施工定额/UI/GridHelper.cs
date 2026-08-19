@@ -58,12 +58,19 @@ namespace 施工定额.UI
                 }
 
                 dgv.DataSource = bindingList;
-                dgv.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
+                dgv.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.DisplayedCells;
                 dgv.DefaultCellStyle.WrapMode = DataGridViewTriState.True;
 
-                // 项目特征等换行列：编辑时支持多行输入
+                if (dgv.Columns.Contains("项目特征"))
+                {
+                    var feat = dgv.Columns["项目特征"];
+                    feat.DefaultCellStyle.WrapMode = DataGridViewTriState.True;
+                }
+
                 dgv.EditingControlShowing -= Grid_EditingControlShowing_Multiline;
                 dgv.EditingControlShowing += Grid_EditingControlShowing_Multiline;
+                dgv.KeyDown -= Grid_KeyDown_InsertNewline;
+                dgv.KeyDown += Grid_KeyDown_InsertNewline;
             }
             finally
             {
@@ -71,20 +78,41 @@ namespace 施工定额.UI
             }
         }
 
+        private static bool IsFeatureColumn(DataGridViewColumn col) =>
+            col.DefaultCellStyle.WrapMode == DataGridViewTriState.True
+            || string.Equals(col.Name, "项目特征", StringComparison.Ordinal)
+            || string.Equals(col.DataPropertyName, "项目特征", StringComparison.Ordinal);
+
         private static void Grid_EditingControlShowing_Multiline(object? sender, DataGridViewEditingControlShowingEventArgs e)
         {
             if (sender is not DataGridView dgv) return;
             if (dgv.CurrentCell == null) return;
             var col = dgv.Columns[dgv.CurrentCell.ColumnIndex];
-            bool wrap = col.DefaultCellStyle.WrapMode == DataGridViewTriState.True
-                        || string.Equals(col.Name, "项目特征", StringComparison.Ordinal)
-                        || string.Equals(col.DataPropertyName, "项目特征", StringComparison.Ordinal);
-            if (wrap && e.Control is TextBox tb)
+            if (IsFeatureColumn(col) && e.Control is TextBox tb)
             {
                 tb.Multiline = true;
                 tb.AcceptsReturn = true;
                 tb.WordWrap = true;
+                tb.ScrollBars = ScrollBars.Vertical;
             }
+        }
+
+        private static void Grid_KeyDown_InsertNewline(object? sender, KeyEventArgs e)
+        {
+            if (sender is not DataGridView dgv) return;
+            if (e.KeyCode != Keys.Enter) return;
+            if (!dgv.IsCurrentCellInEditMode || dgv.CurrentCell == null) return;
+            var col = dgv.Columns[dgv.CurrentCell.ColumnIndex];
+            if (!IsFeatureColumn(col)) return;
+            if (dgv.EditingControl is not TextBox tb) return;
+
+            int pos = tb.SelectionStart;
+            string nl = Environment.NewLine;
+            tb.Text = tb.Text.Insert(pos, nl);
+            tb.SelectionStart = pos + nl.Length;
+            tb.SelectionLength = 0;
+            e.Handled = true;
+            e.SuppressKeyPress = true;
         }
     }
 
