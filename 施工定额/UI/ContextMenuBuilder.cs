@@ -30,7 +30,7 @@ namespace 施工定额.UI
         public ContextMenuStrip BuildQingdanMenu(DataGridView dgv,
             string qingdanCategory = QingdanCategory.分部分项)
         {
-            var menu = new ContextMenuStrip();
+            var menu = new ContextMenuStrip { Font = UiTheme.Font };
             var category = QingdanCategory.Normalize(qingdanCategory);
 
             var deleteItem = new ToolStripMenuItem("删除清单");
@@ -40,20 +40,19 @@ namespace 施工定额.UI
             var newItem = new ToolStripMenuItem("新建清单");
             newItem.Click += (_, _) =>
             {
-                // 优先用网格 Tag 上的类别，避免菜单复用或绑定顺序导致类别丢失
                 var cat = category;
                 if (menu.SourceControl is DataGridView g && g.Tag is string tagCat)
                     cat = QingdanCategory.Normalize(tagCat);
                 CreateNewQingdan(cat);
             };
             menu.Items.Add(newItem);
-
+            UiTheme.ApplyToolStrip(menu);
             return menu;
         }
 
         public ContextMenuStrip BuildDingeMenu(DataGridView dgv)
         {
-            return new ContextMenuStrip();
+            return new ContextMenuStrip { Font = UiTheme.Font };
         }
 
         private void DeleteQingdan(DataGridView dgv)
