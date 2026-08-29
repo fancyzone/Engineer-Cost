@@ -1,4 +1,4 @@
-﻿namespace 施工定额.UI
+namespace 施工定额.UI
 {
     public class UpdateProgressForm : Form
     {
@@ -67,6 +67,7 @@
             Controls.Add(_btnCancel);
             Controls.Add(barPanel);
             Controls.Add(_lbl);
+            UiTheme.ApplyTo(this);
         }
 
         public void SetProgress(int percent)
