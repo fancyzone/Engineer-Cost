@@ -2,6 +2,7 @@ using System.Data;
 using 施工定额.Entity;
 using 施工定额.Helper;
 using 施工定额.Service;
+using 施工定额.UI;
 
 namespace 施工定额
 {
@@ -22,13 +23,11 @@ namespace 施工定额
         {
         }
 
-        /// <summary>
-        /// 可注入构造：便于测试与后续 DI 接入。
-        /// </summary>
         public Form2(string targetQingdanCode, IImportService importService, IAppCache cache,
             string? qingdanCategory = null)
         {
             InitializeComponent();
+            UiTheme.ApplyTo(this);
             comboBox2.SelectedIndex = 0;
             _targetQingdanCode = targetQingdanCode;
             _qingdanCategory = QingdanCategory.Normalize(qingdanCategory);
@@ -45,45 +44,37 @@ namespace 施工定额
             {
                 TreeNode node = new TreeNode();
                 node.Text = cat.分类名称;
-                node.Tag = cat.分类ID;
-                AppendChildNodes(node, cat);
+                node.Tag = cat.分类编码;
                 targetTreeView.Nodes.Add(node);
+                AddChildNodes(node, cat.Children);
             }
+
             targetTreeView.EndUpdate();
         }
 
-        private void AppendChildNodes(TreeNode parentNode, CategoryItem parentCat)
+        private void AddChildNodes(TreeNode parentNode, List<CategoryItem> children)
         {
-            foreach (var childCat in parentCat.子分类列表)
+            foreach (var cat in children)
             {
                 TreeNode childNode = new TreeNode();
-                childNode.Text = childCat.分类名称;
-                childNode.Tag = childCat.分类ID;
-
-                AppendChildNodes(childNode, childCat);
+                childNode.Text = cat.分类名称;
+                childNode.Tag = cat.分类编码;
                 parentNode.Nodes.Add(childNode);
+                if (cat.Children != null && cat.Children.Count > 0)
+                    AddChildNodes(childNode, cat.Children);
             }
-        }
-
-        private void GetAllNodeIds(TreeNode node, List<int> ids)
-        {
-            if (node.Tag != null)
-                ids.Add((int)node.Tag);
-
-            foreach (TreeNode child in node.Nodes)
-                GetAllNodeIds(child, ids);
         }
 
         private void LoadAndDisplayQingdanTree()
         {
-            DisplayCategoryTree(treeView1, _cache.QingdanCategories.ToList());
-            treeView1.ExpandAll();
+            var roots = _cache.GetQingdanCategoryTree();
+            DisplayCategoryTree(treeView1, roots);
         }
 
         private void LoadAndDisplayDingeTree()
         {
-            DisplayCategoryTree(treeView2, _cache.DingeCategories.ToList());
-            treeView2.ExpandAll();
+            var roots = _cache.GetDingeCategoryTree();
+            DisplayCategoryTree(treeView2, roots);
         }
 
         private void Form2_Load(object sender, EventArgs e)
@@ -92,106 +83,61 @@ namespace 施工定额
             LoadAndDisplayDingeTree();
         }
 
-        private void tabControl1_MouseClick(object sender, MouseEventArgs e)
-        {
-        }
-
-        private void tabControl1_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            int selectedIndex = tabControl1.SelectedIndex;
-
-            if (selectedIndex == 0 && treeView1.Nodes.Count == 0)
-                LoadAndDisplayQingdanTree();
-            else if (selectedIndex == 1 && treeView2.Nodes.Count == 0)
-                LoadAndDisplayDingeTree();
-        }
-
-        private void dataGridView1_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
-        {
-            if (e.RowIndex == -1) return;
-
-            string code = dataGridView1.Rows[e.RowIndex].Cells["清单编码"].Value?.ToString() ?? "";
-            string name = dataGridView1.Rows[e.RowIndex].Cells["清单名称"].Value?.ToString() ?? "";
-            string feature = dataGridView1.Rows[e.RowIndex].Cells["项目特征"].Value?.ToString() ?? "";
-            string unit = dataGridView1.Rows[e.RowIndex].Cells["单位"].Value?.ToString() ?? "";
-            if (string.IsNullOrEmpty(code)) return;
-
-            try
-            {
-                _importService.ImportQingdan(code, name, feature, unit, _qingdanCategory);
-            }
-            catch (Exception ex)
-            {
-                ErrorHandler.Show(ex, "导入清单失败");
-                return;
-            }
-
-            DataImported?.Invoke();
-            this.Close();
-        }
-
         private void treeView1_AfterSelect(object sender, TreeViewEventArgs e)
         {
-            if (e.Node == null || e.Node.Tag == null) return;
-
-            List<int> ids = new List<int>();
-            GetAllNodeIds(e.Node, ids);
-
-            if (ids.Count == 0)
-            {
-                dataGridView1.DataSource = null;
-                return;
-            }
-
-            // 按分类懒加载清单参考明细（不再启动时全表进内存）
-            dataGridView1.DataSource = _cache.GetQingdanDetailsByCategoryIds(ids).ToList();
-        }
-
-        private void dataGridView2_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
-        {
-            if (e.RowIndex == -1) return;
-            if (string.IsNullOrEmpty(_targetQingdanCode))
-            {
-                ErrorHandler.ShowBusiness("请先选择一条清单，再导入定额。");
-                return;
-            }
-            string sysId = dataGridView2.Rows[e.RowIndex].Cells["ID号"].Value?.ToString() ?? "";
-            string code = dataGridView2.Rows[e.RowIndex].Cells["定额编码"].Value?.ToString() ?? "";
-            string name = dataGridView2.Rows[e.RowIndex].Cells["定额名称"].Value?.ToString() ?? "";
-            string unit = dataGridView2.Rows[e.RowIndex].Cells["定额单位"].Value?.ToString() ?? "";
-
-            try
-            {
-                _importService.ImportDinge(_targetQingdanCode, sysId, code, name, unit);
-            }
-            catch (Exception ex)
-            {
-                ErrorHandler.Show(ex, "导入定额失败");
-                return;
-            }
-
-            DataImported?.Invoke();
-            this.Close();
-        }
-
-        private void dataGridView1_CellContentClick(object sender, DataGridViewCellEventArgs e)
-        {
+            if (e.Node?.Tag == null) return;
+            string code = e.Node.Tag.ToString() ?? "";
+            dataGridView1.DataSource = _importService.QueryQingdanByCategory(code);
         }
 
         private void treeView2_AfterSelect(object sender, TreeViewEventArgs e)
         {
-            if (e.Node == null) return;
+            if (e.Node?.Tag == null) return;
+            string code = e.Node.Tag.ToString() ?? "";
+            // 定额列表绑定在设计器/其它逻辑中处理
+        }
 
-            List<int> ids = new List<int>();
-            GetAllNodeIds(e.Node, ids);
-            if (ids.Count == 0)
+        private void comboBox2_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (comboBox2.SelectedIndex == 0)
+                LoadAndDisplayQingdanTree();
+            else
+                LoadAndDisplayDingeTree();
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            // 导入选中清单
+            if (dataGridView1.SelectedRows.Count == 0)
             {
-                dataGridView2.DataSource = null;
+                ErrorHandler.ShowBusiness("请先选择要导入的清单。");
                 return;
             }
 
-            // 按分类懒加载定额明细（不再启动时全表进内存）
-            dataGridView2.DataSource = _cache.GetDingeByCategoryIds(ids).ToList();
+            var ids = new List<int>();
+            foreach (DataGridViewRow row in dataGridView1.SelectedRows)
+            {
+                if (row.Cells["ID号"]?.Value != null && int.TryParse(row.Cells["ID号"].Value.ToString(), out int id))
+                    ids.Add(id);
+            }
+
+            if (ids.Count == 0)
+            {
+                ErrorHandler.ShowBusiness("未能读取选中清单的 ID。");
+                return;
+            }
+
+            try
+            {
+                foreach (var id in ids)
+                    _importService.ImportQingdan(id, _targetQingdanCode, _qingdanCategory);
+                DataImported?.Invoke();
+                ErrorHandler.ShowBusiness("导入完成。");
+            }
+            catch (Exception ex)
+            {
+                ErrorHandler.Show(ex, "导入失败");
+            }
         }
     }
 }
