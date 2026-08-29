@@ -1,13 +1,13 @@
-﻿namespace 施工定额
+namespace 施工定额
 {
     public class ImageViewerForm : Form
     {
         private readonly List<string> _files;
         private int _index = 0;
 
-        private PictureBox _pictureBox;
-        private Label _lblInfo;
-        private Button _btnPrev, _btnNext;
+        private PictureBox _pictureBox = null!;
+        private Label _lblInfo = null!;
+        private Button _btnPrev = null!, _btnNext = null!;
 
         public ImageViewerForm(string title, List<string> files)
         {
@@ -17,6 +17,7 @@
             Height = 800;
             StartPosition = FormStartPosition.CenterParent;
             BuildUI();
+            UI.UiTheme.ApplyTo(this);
             LoadImage();
         }
 
@@ -34,7 +35,7 @@
                 Dock = DockStyle.Top,
                 Height = 28,
                 TextAlign = ContentAlignment.MiddleCenter,
-                Font = new Font("微软雅黑", 10)
+                Font = UI.UiTheme.Font
             };
 
             var panel = new Panel { Dock = DockStyle.Bottom, Height = 44 };
@@ -66,13 +67,11 @@
 
         private void LoadImage()
         {
-            // 释放旧图，避免文件句柄占用
             _pictureBox.Image?.Dispose();
             _pictureBox.Image = null;
 
             try
             {
-                // ✅ MemoryStream 不 using，让 Image 全程持有它
                 var ms = new MemoryStream(File.ReadAllBytes(_files[_index]));
                 _pictureBox.Image = Image.FromStream(ms);
             }

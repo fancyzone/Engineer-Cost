@@ -17,8 +17,9 @@ namespace 施工定额.UI
 
     public static class GridManager
     {
-        public static readonly Font UiFont = new Font("Microsoft YaHei UI", 10.5f);
-        public static readonly Font UiHeaderFont = new Font("Microsoft YaHei UI", 10.5f, FontStyle.Bold);
+        /// <summary>兼容旧引用，等同 UiTheme.Font。</summary>
+        public static Font UiFont => UiTheme.Font;
+        public static Font UiHeaderFont => UiTheme.HeaderFont;
 
         public static void BindOnce<T>(DataGridView dgv,
                                         BindingList<T> bindingList,
@@ -37,9 +38,9 @@ namespace 施工定额.UI
                     .GetProperty("DoubleBuffered", BindingFlags.Instance | BindingFlags.NonPublic)
                     ?.SetValue(dgv, true);
 
-                dgv.Font = UiFont;
-                dgv.DefaultCellStyle.Font = UiFont;
-                dgv.ColumnHeadersDefaultCellStyle.Font = UiHeaderFont;
+                dgv.Font = UiTheme.Font;
+                dgv.DefaultCellStyle.Font = UiTheme.Font;
+                dgv.ColumnHeadersDefaultCellStyle.Font = UiTheme.HeaderFont;
                 dgv.RowTemplate.Height = 28;
 
                 if (dgv.Columns.Count == 0)
@@ -57,7 +58,7 @@ namespace 施工定额.UI
                             {
                                 Format = col.Format,
                                 Alignment = col.Alignment,
-                                Font = UiFont,
+                                Font = UiTheme.Font,
                                 WrapMode = col.WrapMode
                                     ? DataGridViewTriState.True
                                     : DataGridViewTriState.NotSet
@@ -74,11 +75,14 @@ namespace 施工定额.UI
                 {
                     var feat = dgv.Columns["项目特征"]!;
                     feat.DefaultCellStyle.WrapMode = DataGridViewTriState.True;
-                    feat.DefaultCellStyle.Font = UiFont;
+                    feat.DefaultCellStyle.Font = UiTheme.Font;
                 }
 
                 dgv.EditingControlShowing -= Grid_EditingControlShowing_Multiline;
                 dgv.EditingControlShowing += Grid_EditingControlShowing_Multiline;
+
+                // 恢复并记忆用户调整的列宽
+                GridLayoutStore.Attach(dgv);
             }
             finally
             {
@@ -99,7 +103,7 @@ namespace 施工定额.UI
 
             if (e.Control is TextBox tb)
             {
-                tb.Font = UiFont;
+                tb.Font = UiTheme.Font;
                 if (IsFeatureColumn(col))
                 {
                     tb.Multiline = true;

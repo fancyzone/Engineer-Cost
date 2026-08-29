@@ -25,7 +25,6 @@ namespace 施工定额.UI
             MinimizeBox = false;
             StartPosition = FormStartPosition.CenterParent;
             ClientSize = new Size(420, 260);
-            Font = new Font("Microsoft YaHei UI", 9F);
 
             var layout = new TableLayoutPanel
             {
@@ -75,6 +74,7 @@ namespace 施工定额.UI
             layout.SetColumnSpan(buttons, 2);
 
             Controls.Add(layout);
+            UiTheme.ApplyTo(this);
             AcceptButton = btnOk;
             CancelButton = btnCancel;
         }

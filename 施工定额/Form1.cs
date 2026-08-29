@@ -100,6 +100,7 @@ namespace 施工定额
             EnsureSettingsMenu();
             EnsureHelpMenu();
             WirePlaceholderMenus();
+            UiTheme.ApplyToolStrip(menuStrip1);
         }
 
         private void EnsureMeasureTab()
@@ -299,6 +300,7 @@ namespace 施工定额
                 Name = "btnViewImage", HeaderText = "图片", Text = "查看",
                 UseColumnTextForButtonValue = true, Width = 60
             });
+            GridLayoutStore.Attach(dataGridView1);
             GridManager.BindOnce(DataGridView_dinge, _dingeBindingList, GridColumns.Dinge);
             GridManager.BindOnce(dataGridView2, _xhlBindingList, GridColumns.Xiaohaoliang);
             if (dataGridView_measure != null)
@@ -568,23 +570,9 @@ namespace 施工定额
 
         private void ApplyUiFont()
         {
-            var font = GridManager.UiFont;
-            Font = font;
-            if (menuStrip1 != null) menuStrip1.Font = font;
-            if (toolStrip1 != null) toolStrip1.Font = font;
-            if (tabControl1 != null) tabControl1.Font = font;
-            ApplyFontRecursive(this, font);
-        }
-
-        private static void ApplyFontRecursive(Control parent, Font font)
-        {
-            foreach (Control c in parent.Controls)
-            {
-                if (c is DataGridView) { ApplyFontRecursive(c, font); continue; }
-                try { c.Font = font; } catch { }
-                if (c.HasChildren)
-                    ApplyFontRecursive(c, font);
-            }
+            UiTheme.ApplyTo(this);
+            UiTheme.ApplyToolStrip(menuStrip1);
+            UiTheme.ApplyToolStrip(toolStrip1);
         }
 
         private static Bitmap CreateRefreshIcon()

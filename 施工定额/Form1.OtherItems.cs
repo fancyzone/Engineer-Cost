@@ -87,13 +87,14 @@ namespace 施工定额
             dataGridView_other.CellBeginEdit += dataGridView_other_CellBeginEdit;
             dataGridView_other.CellEndEdit += dataGridView_other_CellEndEdit;
 
-            var menu = new ContextMenuStrip();
+            var menu = new ContextMenuStrip { Font = UiTheme.Font };
             var add = new ToolStripMenuItem("新增条目");
             add.Click += (_, _) => AddOtherItem();
             var del = new ToolStripMenuItem("删除条目");
             del.Click += (_, _) => DeleteOtherItem();
             menu.Items.Add(add);
             menu.Items.Add(del);
+            UiTheme.ApplyToolStrip(menu);
             dataGridView_other.ContextMenuStrip = menu;
         }
 

@@ -2,6 +2,7 @@ using System.Data;
 using 施工定额.Entity;
 using 施工定额.Helper;
 using 施工定额.Service;
+using 施工定额.UI;
 
 namespace 施工定额
 {
@@ -29,6 +30,7 @@ namespace 施工定额
             string? qingdanCategory = null)
         {
             InitializeComponent();
+            UiTheme.ApplyTo(this);
             comboBox2.SelectedIndex = 0;
             _targetQingdanCode = targetQingdanCode;
             _qingdanCategory = QingdanCategory.Normalize(qingdanCategory);
@@ -143,7 +145,6 @@ namespace 施工定额
                 return;
             }
 
-            // 按分类懒加载清单参考明细（不再启动时全表进内存）
             dataGridView1.DataSource = _cache.GetQingdanDetailsByCategoryIds(ids).ToList();
         }
 
@@ -190,7 +191,6 @@ namespace 施工定额
                 return;
             }
 
-            // 按分类懒加载定额明细（不再启动时全表进内存）
             dataGridView2.DataSource = _cache.GetDingeByCategoryIds(ids).ToList();
         }
     }

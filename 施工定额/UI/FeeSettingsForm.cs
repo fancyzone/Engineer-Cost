@@ -100,6 +100,7 @@ namespace 施工定额.UI
 
             Controls.Add(layout);
             AcceptButton = btnOk;
+            UiTheme.ApplyTo(this);
             CancelButton = btnCancel;
 
             btnOk.Click += (_, _) =>

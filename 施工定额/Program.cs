@@ -1,4 +1,5 @@
 using 施工定额.Helper;
+using 施工定额.UI;
 
 namespace 施工定额
 {
@@ -16,6 +17,7 @@ namespace 施工定额
             AppLogger.Info($"程序启动，版本 {System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}");
 
             ApplicationConfiguration.Initialize();
+            UiTheme.ApplyApplicationDefaults();
 
             // Ctrl+F5 无调试器时，未处理异常会直接闪退；这里兜底提示
             Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
