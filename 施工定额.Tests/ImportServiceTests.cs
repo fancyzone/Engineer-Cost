@@ -86,9 +86,9 @@ CREATE UNIQUE INDEX uidx_消耗量_定额ID_编码 ON 消耗量(定额ID, 消耗
             conn.Open();
             conn.Execute("INSERT INTO 清单 (清单编码, 清单名称, 项目特征, 单位) VALUES ('Q-SYS', '系统清单', '特征A', 'm3')");
             conn.Execute(@"INSERT INTO 定额_市政工程 (ID号, 清单编码, 定额编码, 定额名称, 定额单位, 定额工程量, 定额单价, 定额合价)
-VALUES ('sys-dg-1', 'Q-SYS', 'D-100', '挖土', 'm3', 1, 10, 10)");
-            conn.Execute(@"INSERT INTO 消耗量 (定额ID, 清单编码, 定额编码, 消耗量类别, 消耗量编码, 消耗量名称, 规格型号, 消耗量单位, 含量, 数量, 定额基价, 市场价, 市场价合计)
-VALUES ('sys-dg-1', 'Q-SYS', 'D-100', '人工', 'R001', '普工', '', '工日', 2, 2, 50, 50, 100)");
+VALUES ('sys-dg-1', 'Q-SYS', 'D-100', '挖土', 'm3', 0, 0, 0)");
+            conn.Execute(@"INSERT INTO 消耗量 (定额ID, 清单编码, 定额编码, 消耗量类别, 消耗量编码, 消耗量名称, 消耗量单位, 含量, 数量, 定额基价, 市场价, 市场价合计)
+VALUES ('sys-dg-1', 'Q-SYS', 'D-100', '人', 'L1', '普工', '工日', 2, 0, 100, 100, 0)");
         }
 
         [Fact]
@@ -99,8 +99,11 @@ VALUES ('sys-dg-1', 'Q-SYS', 'D-100', '人工', 'R001', '普工', '', '工日', 
             using var conn = new SqliteConnection(_userConn);
             conn.Open();
 
-            var code = conn.ExecuteScalar<string>("SELECT 清单编码 FROM 清单");
-            Assert.Equal("Q-SYS001", code);
+            var userCode = conn.ExecuteScalar<string>("SELECT 清单编码 FROM 清单 WHERE 清单编码 LIKE 'Q-SYS%'");
+            Assert.Equal("Q-SYS001", userCode);
+
+            var qdCount = conn.ExecuteScalar<int>("SELECT COUNT(1) FROM 清单 WHERE 清单编码='Q-SYS001'");
+            Assert.Equal(1, qdCount);
 
             var category = conn.ExecuteScalar<string>("SELECT 项目类别 FROM 清单 WHERE 清单编码='Q-SYS001'");
             Assert.Equal("分部分项", category);
