@@ -10,16 +10,18 @@ namespace 施工定额
     {
         private readonly string _targetQingdanCode;
         private readonly string _qingdanCategory;
+        private readonly string _unitProjectCode;
         private readonly IImportService _importService;
         private readonly IAppCache _cache;
 
         public event Action? DataImported;
 
-        public Form2(string targetQingdanCode, string? qingdanCategory = null)
+        public Form2(string targetQingdanCode, string? qingdanCategory = null, string? unitProjectCode = null)
             : this(targetQingdanCode,
                    new ImportService(AppConfig.SystemDbConn, AppConfig.UserDbConn),
                    AppCache.Instance,
-                   qingdanCategory)
+                   qingdanCategory,
+                   unitProjectCode)
         {
         }
 
@@ -27,13 +29,16 @@ namespace 施工定额
         /// 可注入构造：便于测试与后续 DI 接入。
         /// </summary>
         public Form2(string targetQingdanCode, IImportService importService, IAppCache cache,
-            string? qingdanCategory = null)
+            string? qingdanCategory = null, string? unitProjectCode = null)
         {
             InitializeComponent();
             UiTheme.ApplyTo(this);
             comboBox2.SelectedIndex = 0;
             _targetQingdanCode = targetQingdanCode;
             _qingdanCategory = QingdanCategory.Normalize(qingdanCategory);
+            _unitProjectCode = string.IsNullOrWhiteSpace(unitProjectCode)
+                ? UnitProject.DefaultCode
+                : unitProjectCode.Trim();
             _importService = importService;
             _cache = cache;
         }
@@ -90,12 +95,8 @@ namespace 施工定额
 
         private void Form2_Load(object sender, EventArgs e)
         {
+            _cache.LoadCategories();
             LoadAndDisplayQingdanTree();
-            LoadAndDisplayDingeTree();
-        }
-
-        private void tabControl1_MouseClick(object sender, MouseEventArgs e)
-        {
         }
 
         private void tabControl1_SelectedIndexChanged(object sender, EventArgs e)
@@ -120,7 +121,7 @@ namespace 施工定额
 
             try
             {
-                _importService.ImportQingdan(code, name, feature, unit, _qingdanCategory);
+                _importService.ImportQingdan(code, name, feature, unit, _qingdanCategory, _unitProjectCode);
             }
             catch (Exception ex)
             {
@@ -129,23 +130,18 @@ namespace 施工定额
             }
 
             DataImported?.Invoke();
-            this.Close();
+            Close();
         }
 
         private void treeView1_AfterSelect(object sender, TreeViewEventArgs e)
         {
-            if (e.Node == null || e.Node.Tag == null) return;
-
-            List<int> ids = new List<int>();
+            if (e.Node == null) return;
+            var ids = new List<int>();
             GetAllNodeIds(e.Node, ids);
+            if (ids.Count == 0) return;
 
-            if (ids.Count == 0)
-            {
-                dataGridView1.DataSource = null;
-                return;
-            }
-
-            dataGridView1.DataSource = _cache.GetQingdanDetailsByCategoryIds(ids).ToList();
+            var details = _cache.GetQingdanDetailsByCategoryIds(ids);
+            dataGridView1.DataSource = details;
         }
 
         private void dataGridView2_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
@@ -153,13 +149,15 @@ namespace 施工定额
             if (e.RowIndex == -1) return;
             if (string.IsNullOrEmpty(_targetQingdanCode))
             {
-                ErrorHandler.ShowBusiness("请先选择一条清单，再导入定额。");
+                ErrorHandler.ShowBusiness("请先在主界面选中一条清单再导入定额。");
                 return;
             }
+
             string sysId = dataGridView2.Rows[e.RowIndex].Cells["ID号"].Value?.ToString() ?? "";
             string code = dataGridView2.Rows[e.RowIndex].Cells["定额编码"].Value?.ToString() ?? "";
             string name = dataGridView2.Rows[e.RowIndex].Cells["定额名称"].Value?.ToString() ?? "";
             string unit = dataGridView2.Rows[e.RowIndex].Cells["定额单位"].Value?.ToString() ?? "";
+            if (string.IsNullOrEmpty(sysId)) return;
 
             try
             {
@@ -172,26 +170,18 @@ namespace 施工定额
             }
 
             DataImported?.Invoke();
-            this.Close();
-        }
-
-        private void dataGridView1_CellContentClick(object sender, DataGridViewCellEventArgs e)
-        {
+            Close();
         }
 
         private void treeView2_AfterSelect(object sender, TreeViewEventArgs e)
         {
             if (e.Node == null) return;
-
-            List<int> ids = new List<int>();
+            var ids = new List<int>();
             GetAllNodeIds(e.Node, ids);
-            if (ids.Count == 0)
-            {
-                dataGridView2.DataSource = null;
-                return;
-            }
+            if (ids.Count == 0) return;
 
-            dataGridView2.DataSource = _cache.GetDingeByCategoryIds(ids).ToList();
+            var details = _cache.GetDingeDetailsByCategoryIds(ids);
+            dataGridView2.DataSource = details;
         }
     }
 }
