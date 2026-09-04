@@ -515,26 +515,73 @@ namespace 施工定额
             catch (Exception ex) { ErrorHandler.Show(ex, "保存消耗量失败"); }
         }
 
-        private void toolStripButtonExport_Click(object sender, EventArgs e)
+        private void toolStripButton2_Click(object sender, EventArgs e) =>
+            ExportCoordinator.ExportYdjc(this, _allQingdan, _calcService);
+
+        private async void toolStripButton1_Click(object sender, EventArgs e)
         {
-            using var info = new ExportProjectInfoForm();
-            if (info.ShowDialog(this) != DialogResult.OK) return;
+            var btn = sender as ToolStripItem;
             try
             {
-                var export = new YdjcExportService(new HenanYdjcExportStrategy());
-                export.Export(_allQingdan.ToList(), info.ProjectName, info.ProjectCode, info.OutputPath);
-                ErrorHandler.ShowBusiness($"已导出：{info.OutputPath}", "导出");
+                if (btn != null) btn.Enabled = false;
+                Cursor = Cursors.WaitCursor;
+                await UpdateCoordinator.CheckAllAsync(this, silentIfUpToDate: false);
             }
-            catch (Exception ex) { ErrorHandler.Show(ex, "导出失败"); }
+            finally
+            {
+                Cursor = Cursors.Default;
+                if (btn != null) btn.Enabled = true;
+            }
         }
 
-        private void toolStripButtonUpdate_Click(object sender, EventArgs e) =>
-            new UpdateCoordinator().CheckAndUpdate(this);
+        private void ApplyToolbarIcons()
+        {
+            toolStripButton1.Image = CreateRefreshIcon();
+            toolStripButton1.DisplayStyle = ToolStripItemDisplayStyle.ImageAndText;
+            toolStripButton1.TextImageRelation = TextImageRelation.ImageAboveText;
+            toolStripButton2.Image = CreateExportIcon();
+            toolStripButton2.DisplayStyle = ToolStripItemDisplayStyle.ImageAndText;
+            toolStripButton2.TextImageRelation = TextImageRelation.ImageAboveText;
+            toolStripButton2.Text = "导出";
+        }
 
-        private void ApplyUiFont() => UiTheme.ApplyTo(this);
+        private void ApplyUiFont()
+        {
+            UiTheme.ApplyTo(this);
+            UiTheme.ApplyToolStrip(menuStrip1);
+            UiTheme.ApplyToolStrip(toolStrip1);
+        }
 
-        private void ApplyToolbarIcons() { }
+        private static Bitmap CreateRefreshIcon()
+        {
+            const int size = 32;
+            var bmp = new Bitmap(size, size);
+            using var g = Graphics.FromImage(bmp);
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            g.Clear(Color.Transparent);
+            using var pen = new Pen(Color.FromArgb(0, 120, 215), 2.5f);
+            g.DrawArc(pen, new Rectangle(5, 5, size - 10, size - 10), 40, 280);
+            using var brush = new SolidBrush(Color.FromArgb(0, 120, 215));
+            g.FillPolygon(brush, new[] { new PointF(size - 7, 8), new PointF(size - 14, 6), new PointF(size - 12, 14) });
+            return bmp;
+        }
 
-        private void ApplyResponsiveLayout() { }
+        private static Bitmap CreateExportIcon()
+        {
+            const int size = 32;
+            var bmp = new Bitmap(size, size);
+            using var g = Graphics.FromImage(bmp);
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            g.Clear(Color.Transparent);
+            using var pen = new Pen(Color.FromArgb(16, 124, 16), 2f);
+            using var brush = new SolidBrush(Color.FromArgb(16, 124, 16));
+            g.DrawRectangle(pen, 8, 4, 16, 22);
+            g.DrawLine(pen, 18, 4, 18, 10);
+            g.DrawLine(pen, 18, 10, 24, 10);
+            g.DrawLine(pen, 18, 4, 24, 10);
+            g.DrawLine(pen, 16, 14, 16, 22);
+            g.FillPolygon(brush, new[] { new PointF(16, 24), new PointF(12, 20), new PointF(20, 20) });
+            return bmp;
+        }
     }
 }
