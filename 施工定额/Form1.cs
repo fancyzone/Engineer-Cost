@@ -54,6 +54,8 @@ namespace 施工定额
                 {
                     if (QingdanCategory.IsOther(qd.项目类别))
                         continue;
+                    if (!MatchesCurrentUnit(qd))
+                        continue;
                     if (QingdanCategory.IsMeasure(qd.项目类别))
                         _measureQingdanList.Add(qd);
                     else
@@ -90,7 +92,9 @@ namespace 施工定额
             _qingdanPresenter = new QingdanPresenter(_repo, _calcService, _allQingdan, UpdateDisplay);
             _summaryPresenter = new SummaryPresenter(_allQingdan, _calcService);
 
-            _menuBuilder = new ContextMenuBuilder(_qingdanPresenter, _selection, ReloadAndRecalculateEverything);
+            _menuBuilder = new ContextMenuBuilder(
+                _qingdanPresenter, _selection, ReloadAndRecalculateEverything,
+                () => CurrentUnitProjectCode);
             dataGridView1.Tag = QingdanCategory.分部分项;
             dataGridView1.ContextMenuStrip = _menuBuilder.BuildQingdanMenu(dataGridView1, QingdanCategory.分部分项);
 
@@ -101,6 +105,7 @@ namespace 施工定额
             EnsureHelpMenu();
             WirePlaceholderMenus();
             UiTheme.ApplyToolStrip(menuStrip1);
+            EnsureUnitProjectsInitialized();
         }
 
         private void EnsureMeasureTab()
@@ -388,7 +393,7 @@ namespace 施工定额
             string category = QingdanCategory.分部分项;
             if (grid == dataGridView_measure || (grid.Tag is string tag && QingdanCategory.IsMeasure(tag)))
                 category = QingdanCategory.措施项目;
-            Form2 f2 = AppComposition.CreateImportForm(qingdanCode, category);
+            Form2 f2 = AppComposition.CreateImportForm(qingdanCode, category, CurrentUnitProjectCode);
             f2.DataImported += () =>
             {
                 if (IsDisposed) return;
@@ -422,7 +427,7 @@ namespace 施工定额
                 ErrorHandler.ShowBusiness("该清单文件夹下没有图片。");
                 return;
             }
-            new ImageViewerForm(code, imageFiles).Show();
+            new ImageViewerForm(code, imageFiles).Show(this);
         }
 
         private void tabControl1_SelectedIndexChanged(object sender, EventArgs e)
@@ -430,14 +435,14 @@ namespace 施工定额
             if (tabControl1.SelectedIndex < 0) return;
             string selectedTabName = tabControl1.TabPages[tabControl1.SelectedIndex].Name;
             if (selectedTabName == "tabRenCaiJi")
-                dataGridView3.DataSource = _summaryPresenter.GetRenCaiJiSummaryFromMemory("");
+                dataGridView3.DataSource = _summaryPresenter.GetRenCaiJiSummaryFromMemory("", CurrentUnitProjectCode);
             if (selectedTabName == "tabCostSummary")
-                dataGridView4.DataSource = _summaryPresenter.GetCostSummaryData();
+                dataGridView4.DataSource = _summaryPresenter.GetCostSummaryData(CurrentUnitProjectCode);
         }
 
         private void treeView1_AfterSelect(object sender, TreeViewEventArgs e)
         {
-            dataGridView3.DataSource = _summaryPresenter.GetRenCaiJiSummaryFromMemory(e.Node?.Text ?? "");
+            dataGridView3.DataSource = _summaryPresenter.GetRenCaiJiSummaryFromMemory(e.Node?.Text ?? "", CurrentUnitProjectCode);
         }
 
         private void dataGridView2_CellValueChanged(object sender, DataGridViewCellEventArgs e)
@@ -503,32 +508,34 @@ namespace 施工定额
 
         private void DataGridView_dinge_CellClick(object sender, DataGridViewCellEventArgs e)
         {
-            if (e.RowIndex == -1) return;
-            _selection.SelectDinge(
-                DataGridView_dinge.Rows[e.RowIndex].Cells["定额编码"].Value?.ToString() ?? "",
-                DataGridView_dinge.Rows[e.RowIndex].Cells["ID号"].Value?.ToString() ?? "");
+            if (e.RowIndex < 0) return;
+            string code = DataGridView_dinge.Rows[e.RowIndex].Cells["定额编码"].Value?.ToString() ?? "";
+            string id = DataGridView_dinge.Rows[e.RowIndex].Cells["ID号"].Value?.ToString() ?? "";
+            _selection.SelectDinge(code, id);
         }
 
         private void DataGridView_measure_dinge_CellClick(object? sender, DataGridViewCellEventArgs e)
         {
             if (DataGridView_measure_dinge == null || e.RowIndex < 0) return;
-            _selection.SelectDinge(
-                DataGridView_measure_dinge.Rows[e.RowIndex].Cells["定额编码"].Value?.ToString() ?? "",
-                DataGridView_measure_dinge.Rows[e.RowIndex].Cells["ID号"].Value?.ToString() ?? "");
+            string code = DataGridView_measure_dinge.Rows[e.RowIndex].Cells["定额编码"].Value?.ToString() ?? "";
+            string id = DataGridView_measure_dinge.Rows[e.RowIndex].Cells["ID号"].Value?.ToString() ?? "";
+            _selection.SelectDinge(code, id);
         }
 
         private void dataGridView1_CellEndEdit(object sender, DataGridViewCellEventArgs e) =>
-            HandleQingdanCellEndEdit(myMemoryQingdanBindingList, e.RowIndex, dataGridView1.Columns[e.ColumnIndex].Name);
+            HandleQingdanCellEndEdit(dataGridView1, myMemoryQingdanBindingList, e);
 
         private void dataGridView_measure_CellEndEdit(object? sender, DataGridViewCellEventArgs e)
         {
-            if (dataGridView_measure == null || e.RowIndex < 0) return;
-            HandleQingdanCellEndEdit(_measureQingdanList, e.RowIndex, dataGridView_measure.Columns[e.ColumnIndex].Name);
+            if (dataGridView_measure == null) return;
+            HandleQingdanCellEndEdit(dataGridView_measure, _measureQingdanList, e);
         }
 
-        private void HandleQingdanCellEndEdit(BindingList<Qingdan> list, int rowIndex, string colName)
+        private void HandleQingdanCellEndEdit(DataGridView grid, BindingList<Qingdan> list, DataGridViewCellEventArgs e)
         {
-            var changedQd = list.ElementAtOrDefault(rowIndex);
+            if (e.RowIndex < 0) return;
+            var colName = grid.Columns[e.ColumnIndex].Name;
+            var changedQd = list.ElementAtOrDefault(e.RowIndex);
             if (changedQd == null) return;
             try
             {

@@ -212,8 +212,19 @@ CREATE TABLE IF NOT EXISTS ""清单"" (
 	""综合合价""	REAL,
 	""Level""	TEXT,
 	""项目类别""	TEXT NOT NULL DEFAULT '分部分项',
+	""单位工程编码""	TEXT NOT NULL DEFAULT 'DW001',
 	PRIMARY KEY(""ID号"" AUTOINCREMENT)
 );
+
+CREATE TABLE IF NOT EXISTS ""单位工程"" (
+	""编码""	TEXT NOT NULL PRIMARY KEY,
+	""名称""	TEXT NOT NULL,
+	""排序""	INTEGER NOT NULL DEFAULT 0
+);
+
+INSERT INTO ""单位工程"" (""编码"", ""名称"", ""排序"")
+SELECT 'DW001', '默认单位工程', 0
+WHERE NOT EXISTS (SELECT 1 FROM ""单位工程"" WHERE ""编码"" = 'DW001');
 
 CREATE TABLE IF NOT EXISTS ""定额_市政工程"" (
 	""ID号""	TEXT NOT NULL UNIQUE,

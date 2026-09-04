@@ -90,6 +90,9 @@ namespace 施工定额.Entity
         /// </summary>
         public string 项目类别 { get; set; } = QingdanCategory.分部分项;
 
+        /// <summary>所属单位工程编码，对应「单位工程」表。</summary>
+        public string 单位工程编码 { get; set; } = "";
+
         public List<Dinge> 定额列表 { get; set; } = new List<Dinge>();
 
         /// <summary>

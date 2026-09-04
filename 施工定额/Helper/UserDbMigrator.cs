@@ -18,6 +18,9 @@ namespace 施工定额.Helper
                 conn.Open();
                 EnsureColumn(conn, "定额_市政工程", "换算系数", "REAL NOT NULL DEFAULT 1");
                 EnsureColumn(conn, "清单", "项目类别", "TEXT NOT NULL DEFAULT '分部分项'");
+                EnsureUnitProjectTable(conn);
+                EnsureColumn(conn, "清单", "单位工程编码", "TEXT NOT NULL DEFAULT 'DW001'");
+                BackfillUnitProjectCode(conn);
                 NormalizeQingdanCategory(conn);
                 SeedOtherItemsInQingdan(conn);
                 EnsureIndex(conn, "idx_定额_清单编码",
@@ -28,6 +31,8 @@ namespace 施工定额.Helper
                     "CREATE INDEX IF NOT EXISTS \"idx_消耗量_编码\" ON \"消耗量\"(\"消耗量编码\")");
                 EnsureIndex(conn, "idx_清单_项目类别",
                     "CREATE INDEX IF NOT EXISTS \"idx_清单_项目类别\" ON \"清单\"(\"项目类别\")");
+                EnsureIndex(conn, "idx_清单_单位工程编码",
+                    "CREATE INDEX IF NOT EXISTS \"idx_清单_单位工程编码\" ON \"清单\"(\"单位工程编码\")");
 
                 EnsureUniqueXiaohaoliangIndex(conn);
             }
@@ -54,9 +59,6 @@ END;";
             cmd.ExecuteNonQuery();
         }
 
-        /// <summary>
-        /// 其他项目并入清单表（项目类别=其他项目）；若存在旧「其他项目」表则迁金额后删除。
-        /// </summary>
         private static void SeedOtherItemsInQingdan(SqliteConnection conn)
         {
             var seeds = new (string code, string name)[]
@@ -67,7 +69,6 @@ END;";
                 ("QT-JRG", "计日工"),
             };
 
-            // 先去掉历史重复行（清单编码无唯一约束，旧版 INSERT OR IGNORE 会插多份）
             using (var dedupe = conn.CreateCommand())
             {
                 dedupe.CommandText = @"
@@ -88,8 +89,8 @@ WHERE ""项目类别"" = '其他项目'
                 using var ins = conn.CreateCommand();
                 ins.CommandText = @"
 INSERT INTO ""清单""
-  (""清单编码"", ""清单名称"", ""项目特征"", ""单位"", ""工程量"", ""综合单价"", ""综合合价"", ""项目类别"")
-SELECT $c, $n, '', '', 0, 0, 0, '其他项目'
+  (""清单编码"", ""清单名称"", ""项目特征"", ""单位"", ""工程量"", ""综合单价"", ""综合合价"", ""项目类别"", ""单位工程编码"")
+SELECT $c, $n, '', '', 0, 0, 0, '其他项目', 'DW001'
 WHERE NOT EXISTS (
   SELECT 1 FROM ""清单"" WHERE ""清单编码"" = $c AND ""项目类别"" = '其他项目'
 );";
@@ -173,6 +174,33 @@ AND ""定额ID"" IS NOT NULL AND ""消耗量编码"" IS NOT NULL;";
                 "SELECT 1 FROM sqlite_master WHERE type='index' AND name=@name LIMIT 1";
             check.Parameters.AddWithValue("@name", indexName);
             return check.ExecuteScalar() != null;
+        }
+
+        private static void EnsureUnitProjectTable(SqliteConnection conn)
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+CREATE TABLE IF NOT EXISTS ""单位工程"" (
+	""编码""	TEXT NOT NULL PRIMARY KEY,
+	""名称""	TEXT NOT NULL,
+	""排序""	INTEGER NOT NULL DEFAULT 0
+);
+INSERT INTO ""单位工程"" (""编码"", ""名称"", ""排序"")
+SELECT 'DW001', '默认单位工程', 0
+WHERE NOT EXISTS (SELECT 1 FROM ""单位工程"" WHERE ""编码"" = 'DW001');
+";
+            cmd.ExecuteNonQuery();
+        }
+
+        private static void BackfillUnitProjectCode(SqliteConnection conn)
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+UPDATE ""清单""
+SET ""单位工程编码"" = 'DW001'
+WHERE ""单位工程编码"" IS NULL OR TRIM(CAST(""单位工程编码"" AS TEXT)) = '';
+";
+            cmd.ExecuteNonQuery();
         }
 
         private static void EnsureColumn(SqliteConnection conn, string table, string column, string typeSql)

@@ -10,7 +10,7 @@ namespace 施工定额.Service
         /// </summary>
         /// <param name="category">项目类别，默认分部分项；措施页插入时应传「措施项目」。</param>
         void ImportQingdan(string sysQingdanCode, string name, string feature, string unit,
-            string? category = null);
+            string? category = null, string? unitProjectCode = null);
 
         /// <summary>
         /// 从系统库导入单条定额（连同它的消耗量）到用户库的指定清单下。

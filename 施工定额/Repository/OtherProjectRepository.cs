@@ -91,10 +91,10 @@ namespace 施工定额
             string code = AllocateCustomCode(conn);
             conn.Execute(
                 @"INSERT INTO 清单
-                    (清单编码, 清单名称, 项目特征, 单位, 工程量, 综合单价, 综合合价, 项目类别)
+                    (清单编码, 清单名称, 项目特征, 单位, 工程量, 综合单价, 综合合价, 项目类别, 单位工程编码)
                   VALUES
-                    (@Code, @Name, '', '', 0, 0, @Amt, @Cat)",
-                new { Code = code, Name = name, Amt = amount, Cat = QingdanCategory.其他项目 });
+                    (@Code, @Name, '', '', 0, 0, @Amt, @Cat, @Unit)",
+                new { Code = code, Name = name, Amt = amount, Cat = QingdanCategory.其他项目, Unit = UnitProject.DefaultCode });
             return new OtherProjectItem { 清单编码 = code, 名称 = name, 金额 = amount };
         }
 
@@ -141,12 +141,12 @@ namespace 施工定额
             {
                 conn.Execute(
                     @"INSERT INTO 清单
-                        (清单编码, 清单名称, 项目特征, 单位, 工程量, 综合单价, 综合合价, 项目类别)
-                      SELECT @Code, @Name, '', '', 0, 0, 0, @Cat
+                        (清单编码, 清单名称, 项目特征, 单位, 工程量, 综合单价, 综合合价, 项目类别, 单位工程编码)
+                      SELECT @Code, @Name, '', '', 0, 0, 0, @Cat, @Unit
                       WHERE NOT EXISTS (
                         SELECT 1 FROM 清单 WHERE 清单编码 = @Code AND 项目类别 = @Cat
                       )",
-                    new { Code = code, Name = name, Cat = QingdanCategory.其他项目 });
+                    new { Code = code, Name = name, Cat = QingdanCategory.其他项目, Unit = UnitProject.DefaultCode });
             }
 
             conn.Execute(

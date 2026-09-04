@@ -61,7 +61,8 @@ CREATE TABLE 清单 (
   ID号 INTEGER PRIMARY KEY AUTOINCREMENT,
   清单编码 TEXT, 清单名称 TEXT, 项目特征 TEXT, 单位 TEXT,
   工程量 REAL, 综合单价 REAL, 综合合价 REAL,
-  项目类别 TEXT NOT NULL DEFAULT '分部分项'
+  项目类别 TEXT NOT NULL DEFAULT '分部分项',
+  单位工程编码 TEXT NOT NULL DEFAULT 'DW001'
 );
 CREATE TABLE 定额_市政工程 (
   ID号 TEXT NOT NULL UNIQUE,
@@ -106,6 +107,9 @@ VALUES ('sys-dg-1', 'Q-SYS', 'D-100', '人', 'L1', '普工', '工日', 2, 0, 100
 
             var category = conn.ExecuteScalar<string>("SELECT 项目类别 FROM 清单 WHERE 清单编码='Q-SYS001'");
             Assert.Equal("分部分项", category);
+
+            var unitCode = conn.ExecuteScalar<string>("SELECT 单位工程编码 FROM 清单 WHERE 清单编码='Q-SYS001'");
+            Assert.Equal("DW001", unitCode);
 
             var dgId = conn.ExecuteScalar<string>("SELECT ID号 FROM 定额_市政工程 WHERE 清单编码='Q-SYS001'");
             Assert.False(string.IsNullOrEmpty(dgId));

@@ -20,9 +20,12 @@ namespace 施工定额.Service
         /// </summary>
         /// <param name="category">项目类别；空则默认「分部分项」。</param>
         public void ImportQingdan(string sysQingdanCode, string name, string feature, string unit,
-            string? category = null)
+            string? category = null, string? unitProjectCode = null)
         {
             var resolvedCategory = QingdanCategory.Normalize(category);
+            var resolvedUnit = string.IsNullOrWhiteSpace(unitProjectCode)
+                ? UnitProject.DefaultCode
+                : unitProjectCode.Trim();
             List<Dinge> sysDingeList;
             List<Xiaohaoliang> sysXhlList;
 
@@ -74,16 +77,17 @@ namespace 施工定额.Service
 
                 userConn.Execute(@"
                     INSERT INTO 清单
-                        (清单编码, 清单名称, 项目特征, 单位, 工程量, 综合单价, 综合合价, 项目类别)
+                        (清单编码, 清单名称, 项目特征, 单位, 工程量, 综合单价, 综合合价, 项目类别, 单位工程编码)
                     VALUES
-                        (@清单编码, @清单名称, @项目特征, @单位, 0, 0, 0, @项目类别)",
+                        (@清单编码, @清单名称, @项目特征, @单位, 0, 0, 0, @项目类别, @单位工程编码)",
                     new
                     {
                         清单编码 = userCode,
                         清单名称 = name,
                         项目特征 = feature,
                         单位 = unit,
-                        项目类别 = resolvedCategory
+                        项目类别 = resolvedCategory,
+                        单位工程编码 = resolvedUnit
                     }, tx);
 
                 if (sysDingeList.Count > 0)
@@ -164,9 +168,11 @@ namespace 施工定额.Service
             }
 
             List<Xiaohaoliang> sysXhlList;
+
             using (var conn = new SqliteConnection(_sysConn))
             {
                 sysXhlList = new List<Xiaohaoliang>();
+
                 if (!string.IsNullOrEmpty(sysId))
                 {
                     sysXhlList = conn.Query<Xiaohaoliang>(
