@@ -93,6 +93,17 @@ namespace 施工定额
             _selection.SelectQingdan("");
             UpdateDisplay(DisplayType.Dinge);
             UpdateDisplay(DisplayType.Xiaohaoliang);
+            RefreshSummaryForCurrentUnit();
+        }
+
+        private void RefreshSummaryForCurrentUnit()
+        {
+            if (tabControl1.SelectedIndex < 0) return;
+            string name = tabControl1.TabPages[tabControl1.SelectedIndex].Name;
+            if (name == "tabRenCaiJi")
+                dataGridView3.DataSource = _summaryPresenter.GetRenCaiJiSummaryFromMemory("", CurrentUnitProjectCode);
+            else if (name == "tabCostSummary")
+                dataGridView4.DataSource = _summaryPresenter.GetCostSummaryData(CurrentUnitProjectCode);
         }
 
         private void AddUnitProject()
@@ -106,6 +117,7 @@ namespace 施工定额
                 _currentUnitProjectCode = u.编码;
                 ReloadUnitProjectTree(u.编码);
                 RebuildCategoryViews();
+                RefreshSummaryForCurrentUnit();
             }
             catch (Exception ex)
             {
@@ -154,6 +166,7 @@ namespace 施工定额
                 _currentUnitProjectCode = UnitProject.DefaultCode;
                 ReloadUnitProjectTree(UnitProject.DefaultCode);
                 RebuildCategoryViews();
+                RefreshSummaryForCurrentUnit();
             }
             catch (Exception ex)
             {
