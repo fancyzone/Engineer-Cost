@@ -20,9 +20,19 @@ namespace 施工定额.UI
             _calcService = calcService ?? throw new ArgumentNullException(nameof(calcService));
         }
 
-        public object GetCostSummaryData()
+        private IEnumerable<Qingdan> Scope(string? unitProjectCode)
         {
-            var summary = _calcService.CalculateProjectSummary(_qingdanList);
+            if (string.IsNullOrWhiteSpace(unitProjectCode))
+                return _qingdanList;
+            var u = unitProjectCode.Trim();
+            return _qingdanList.Where(q =>
+                QingdanCategory.IsOther(q.项目类别)
+                || (string.IsNullOrWhiteSpace(q.单位工程编码) ? UnitProject.DefaultCode : q.单位工程编码) == u);
+        }
+
+        public object GetCostSummaryData(string? unitProjectCode = null)
+        {
+            var summary = _calcService.CalculateProjectSummary(Scope(unitProjectCode));
             return new List<object>
             {
                 new { Name = "分部分项费用", Price = summary.分部分项合价 },
@@ -40,9 +50,9 @@ namespace 施工定额.UI
             };
         }
 
-        public List<XiaohaoliangSummary> GetRenCaiJiSummaryFromMemory(string category)
+        public List<XiaohaoliangSummary> GetRenCaiJiSummaryFromMemory(string category, string? unitProjectCode = null)
         {
-            return _qingdanList
+            return Scope(unitProjectCode)
                 .SelectMany(q => q.定额列表)
                 .SelectMany(d => d.消耗量列表)
                 .Where(x => string.IsNullOrEmpty(category) || x.消耗量类别 == category)
