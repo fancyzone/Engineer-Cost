@@ -54,6 +54,8 @@ namespace 施工定额
                 {
                     if (QingdanCategory.IsOther(qd.项目类别))
                         continue;
+                    if (!MatchesCurrentUnit(qd))
+                        continue;
                     if (QingdanCategory.IsMeasure(qd.项目类别))
                         _measureQingdanList.Add(qd);
                     else
@@ -90,7 +92,9 @@ namespace 施工定额
             _qingdanPresenter = new QingdanPresenter(_repo, _calcService, _allQingdan, UpdateDisplay);
             _summaryPresenter = new SummaryPresenter(_allQingdan, _calcService);
 
-            _menuBuilder = new ContextMenuBuilder(_qingdanPresenter, _selection, ReloadAndRecalculateEverything);
+            _menuBuilder = new ContextMenuBuilder(
+                _qingdanPresenter, _selection, ReloadAndRecalculateEverything,
+                () => CurrentUnitProjectCode);
             dataGridView1.Tag = QingdanCategory.分部分项;
             dataGridView1.ContextMenuStrip = _menuBuilder.BuildQingdanMenu(dataGridView1, QingdanCategory.分部分项);
 
@@ -101,6 +105,7 @@ namespace 施工定额
             EnsureHelpMenu();
             WirePlaceholderMenus();
             UiTheme.ApplyToolStrip(menuStrip1);
+            EnsureUnitProjectsInitialized();
         }
 
         private void EnsureMeasureTab()
@@ -388,7 +393,7 @@ namespace 施工定额
             string category = QingdanCategory.分部分项;
             if (grid == dataGridView_measure || (grid.Tag is string tag && QingdanCategory.IsMeasure(tag)))
                 category = QingdanCategory.措施项目;
-            Form2 f2 = AppComposition.CreateImportForm(qingdanCode, category);
+            Form2 f2 = AppComposition.CreateImportForm(qingdanCode, category, CurrentUnitProjectCode);
             f2.DataImported += () =>
             {
                 if (IsDisposed) return;
@@ -430,91 +435,51 @@ namespace 施工定额
             if (tabControl1.SelectedIndex < 0) return;
             string selectedTabName = tabControl1.TabPages[tabControl1.SelectedIndex].Name;
             if (selectedTabName == "tabRenCaiJi")
-                dataGridView3.DataSource = _summaryPresenter.GetRenCaiJiSummaryFromMemory("");
+                dataGridView3.DataSource = _summaryPresenter.GetRenCaiJiSummaryFromMemory("", CurrentUnitProjectCode);
             if (selectedTabName == "tabCostSummary")
-                dataGridView4.DataSource = _summaryPresenter.GetCostSummaryData();
+                dataGridView4.DataSource = _summaryPresenter.GetCostSummaryData(CurrentUnitProjectCode);
         }
 
         private void treeView1_AfterSelect(object sender, TreeViewEventArgs e)
         {
-            dataGridView3.DataSource = _summaryPresenter.GetRenCaiJiSummaryFromMemory(e.Node?.Text ?? "");
+            dataGridView3.DataSource = _summaryPresenter.GetRenCaiJiSummaryFromMemory(e.Node?.Text ?? "", CurrentUnitProjectCode);
         }
 
         private void dataGridView2_CellValueChanged(object sender, DataGridViewCellEventArgs e)
         {
             if (_suppressGridEvents || e.RowIndex < 0) return;
-            dataGridView2.CommitEdit(DataGridViewDataErrorContexts.Commit);
-            var source = dataGridView2.DataSource as BindingList<Xiaohaoliang>;
-            if (source == null || e.RowIndex >= source.Count) return;
-            var xhl = source[e.RowIndex];
-            var colName = dataGridView2.Columns[e.ColumnIndex].Name;
-            var cellValue = dataGridView2.Rows[e.RowIndex].Cells[e.ColumnIndex].Value;
-            try
-            {
-                switch (colName)
-                {
-                    case "市场价":
-                        if (decimal.TryParse(cellValue?.ToString(), out var p))
-                            _qingdanPresenter.OnMarketPriceChanged(xhl, p);
-                        return;
-                    case "含量":
-                        if (decimal.TryParse(cellValue?.ToString(), out var c))
-                            _qingdanPresenter.OnXiaohaoliangHanliangChanged(xhl, c);
-                        return;
-                    default: return;
-                }
-            }
-            catch (Exception ex) { ErrorHandler.Show(ex); }
-        }
-
-        private void HandleDingeCellValueChanged(DataGridView grid, BindingList<Dinge> binding, DataGridViewCellEventArgs e)
-        {
-            if (_suppressGridEvents || e.RowIndex < 0) return;
-            grid.CommitEdit(DataGridViewDataErrorContexts.Commit);
-            var currentQd = _allQingdan.FirstOrDefault(q => q.清单编码 == _selection.SelectedQingdanCode);
-            if (currentQd == null) return;
-            _suppressGridEvents = true;
-            try
-            {
-                var colName = grid.Columns[e.ColumnIndex].Name;
-                if (colName == "换算系数")
-                {
-                    var dg = binding.ElementAtOrDefault(e.RowIndex);
-                    if (dg != null) _qingdanPresenter.OnDingeConversionFactorChanged(currentQd, dg);
-                    else _qingdanPresenter.OnDingeChanged(currentQd);
-                }
-                else _qingdanPresenter.OnDingeChanged(currentQd);
-            }
-            catch (Exception ex) { ErrorHandler.Show(ex); }
-            finally
-            {
-                BeginInvoke(new Action(() => { if (!IsDisposed) _suppressGridEvents = false; }));
-            }
-        }
-
-        private void DataGridView_dinge_CellValueChanged(object sender, DataGridViewCellEventArgs e) =>
-            HandleDingeCellValueChanged(DataGridView_dinge, _dingeBindingList, e);
-
-        private void DataGridView_measure_dinge_CellValueChanged(object? sender, DataGridViewCellEventArgs e)
-        {
-            if (DataGridView_measure_dinge == null) return;
-            HandleDingeCellValueChanged(DataGridView_measure_dinge, _measureDingeBindingList, e);
+            HandleXiaohaoliangCellValueChanged(e.RowIndex, dataGridView2.Columns[e.ColumnIndex].Name);
         }
 
         private void DataGridView_dinge_CellClick(object sender, DataGridViewCellEventArgs e)
         {
-            if (e.RowIndex == -1) return;
-            _selection.SelectDinge(
-                DataGridView_dinge.Rows[e.RowIndex].Cells["定额编码"].Value?.ToString() ?? "",
-                DataGridView_dinge.Rows[e.RowIndex].Cells["ID号"].Value?.ToString() ?? "");
+            if (e.RowIndex < 0) return;
+            SelectDingeFromGrid(DataGridView_dinge, e.RowIndex);
         }
 
         private void DataGridView_measure_dinge_CellClick(object? sender, DataGridViewCellEventArgs e)
         {
             if (DataGridView_measure_dinge == null || e.RowIndex < 0) return;
-            _selection.SelectDinge(
-                DataGridView_measure_dinge.Rows[e.RowIndex].Cells["定额编码"].Value?.ToString() ?? "",
-                DataGridView_measure_dinge.Rows[e.RowIndex].Cells["ID号"].Value?.ToString() ?? "");
+            SelectDingeFromGrid(DataGridView_measure_dinge, e.RowIndex);
+        }
+
+        private void SelectDingeFromGrid(DataGridView grid, int rowIndex)
+        {
+            string code = grid.Rows[rowIndex].Cells["定额编码"].Value?.ToString() ?? "";
+            string id = grid.Rows[rowIndex].Cells["ID号"].Value?.ToString() ?? "";
+            _selection.SelectDinge(code, id);
+        }
+
+        private void DataGridView_dinge_CellValueChanged(object sender, DataGridViewCellEventArgs e)
+        {
+            if (_suppressGridEvents || e.RowIndex < 0) return;
+            HandleDingeCellValueChanged(DataGridView_dinge, e.RowIndex, DataGridView_dinge.Columns[e.ColumnIndex].Name);
+        }
+
+        private void DataGridView_measure_dinge_CellValueChanged(object? sender, DataGridViewCellEventArgs e)
+        {
+            if (_suppressGridEvents || DataGridView_measure_dinge == null || e.RowIndex < 0) return;
+            HandleDingeCellValueChanged(DataGridView_measure_dinge, e.RowIndex, DataGridView_measure_dinge.Columns[e.ColumnIndex].Name);
         }
 
         private void dataGridView1_CellEndEdit(object sender, DataGridViewCellEventArgs e) =>
@@ -522,89 +487,54 @@ namespace 施工定额
 
         private void dataGridView_measure_CellEndEdit(object? sender, DataGridViewCellEventArgs e)
         {
-            if (dataGridView_measure == null || e.RowIndex < 0) return;
+            if (dataGridView_measure == null) return;
             HandleQingdanCellEndEdit(_measureQingdanList, e.RowIndex, dataGridView_measure.Columns[e.ColumnIndex].Name);
         }
 
         private void HandleQingdanCellEndEdit(BindingList<Qingdan> list, int rowIndex, string colName)
         {
-            var changedQd = list.ElementAtOrDefault(rowIndex);
-            if (changedQd == null) return;
+            if (rowIndex < 0 || rowIndex >= list.Count) return;
+            var qd = list[rowIndex];
+            try { _qingdanPresenter.OnQingdanCellEdited(qd, colName); }
+            catch (Exception ex) { ErrorHandler.Show(ex, "保存清单失败"); }
+        }
+
+        private void HandleDingeCellValueChanged(DataGridView grid, int rowIndex, string colName)
+        {
+            try { _qingdanPresenter.OnDingeCellEdited(_selection.SelectedQingdanCode, rowIndex, colName); }
+            catch (Exception ex) { ErrorHandler.Show(ex, "保存定额失败"); }
+        }
+
+        private void HandleXiaohaoliangCellValueChanged(int rowIndex, string colName)
+        {
             try
             {
-                if (colName == "工程量") { _qingdanPresenter.OnQingdanWorkAmountChanged(changedQd); return; }
-                _qingdanPresenter.SaveQingdanFields(changedQd);
+                _qingdanPresenter.OnXiaohaoliangCellEdited(
+                    _selection.SelectedQingdanCode, _selection.SelectedDingeCode, _selection.SelectedDingeID, rowIndex, colName);
             }
-            catch (Exception ex) { ErrorHandler.Show(ex); }
+            catch (Exception ex) { ErrorHandler.Show(ex, "保存消耗量失败"); }
         }
 
-        private void toolStripButton2_Click(object sender, EventArgs e) =>
-            ExportCoordinator.ExportYdjc(this, _allQingdan, _calcService);
-
-        private async void toolStripButton1_Click(object sender, EventArgs e)
+        private void toolStripButtonExport_Click(object sender, EventArgs e)
         {
-            var btn = sender as ToolStripItem;
+            using var info = new ExportProjectInfoForm();
+            if (info.ShowDialog(this) != DialogResult.OK) return;
             try
             {
-                if (btn != null) btn.Enabled = false;
-                Cursor = Cursors.WaitCursor;
-                await UpdateCoordinator.CheckAllAsync(this, silentIfUpToDate: false);
+                var export = new YdjcExportService(new HenanYdjcExportStrategy());
+                export.Export(_allQingdan.ToList(), info.ProjectName, info.ProjectCode, info.OutputPath);
+                ErrorHandler.ShowBusiness($"已导出：{info.OutputPath}", "导出");
             }
-            finally
-            {
-                Cursor = Cursors.Default;
-                if (btn != null) btn.Enabled = true;
-            }
+            catch (Exception ex) { ErrorHandler.Show(ex, "导出失败"); }
         }
 
-        private void ApplyToolbarIcons()
-        {
-            toolStripButton1.Image = CreateRefreshIcon();
-            toolStripButton1.DisplayStyle = ToolStripItemDisplayStyle.ImageAndText;
-            toolStripButton1.TextImageRelation = TextImageRelation.ImageAboveText;
-            toolStripButton2.Image = CreateExportIcon();
-            toolStripButton2.DisplayStyle = ToolStripItemDisplayStyle.ImageAndText;
-            toolStripButton2.TextImageRelation = TextImageRelation.ImageAboveText;
-            toolStripButton2.Text = "导出";
-        }
+        private void toolStripButtonUpdate_Click(object sender, EventArgs e) =>
+            new UpdateCoordinator().CheckAndUpdate(this);
 
-        private void ApplyUiFont()
-        {
-            UiTheme.ApplyTo(this);
-            UiTheme.ApplyToolStrip(menuStrip1);
-            UiTheme.ApplyToolStrip(toolStrip1);
-        }
+        private void ApplyUiFont() => UiTheme.ApplyTo(this);
 
-        private static Bitmap CreateRefreshIcon()
-        {
-            const int size = 32;
-            var bmp = new Bitmap(size, size);
-            using var g = Graphics.FromImage(bmp);
-            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-            g.Clear(Color.Transparent);
-            using var pen = new Pen(Color.FromArgb(0, 120, 215), 2.5f);
-            g.DrawArc(pen, new Rectangle(5, 5, size - 10, size - 10), 40, 280);
-            using var brush = new SolidBrush(Color.FromArgb(0, 120, 215));
-            g.FillPolygon(brush, new[] { new PointF(size - 7, 8), new PointF(size - 14, 6), new PointF(size - 12, 14) });
-            return bmp;
-        }
+        private void ApplyToolbarIcons() { }
 
-        private static Bitmap CreateExportIcon()
-        {
-            const int size = 32;
-            var bmp = new Bitmap(size, size);
-            using var g = Graphics.FromImage(bmp);
-            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-            g.Clear(Color.Transparent);
-            using var pen = new Pen(Color.FromArgb(16, 124, 16), 2f);
-            using var brush = new SolidBrush(Color.FromArgb(16, 124, 16));
-            g.DrawRectangle(pen, 8, 4, 16, 22);
-            g.DrawLine(pen, 18, 4, 18, 10);
-            g.DrawLine(pen, 18, 10, 24, 10);
-            g.DrawLine(pen, 18, 4, 24, 10);
-            g.DrawLine(pen, 16, 14, 16, 22);
-            g.FillPolygon(brush, new[] { new PointF(16, 24), new PointF(12, 20), new PointF(20, 20) });
-            return bmp;
-        }
+        private void ApplyResponsiveLayout() { }
     }
 }
