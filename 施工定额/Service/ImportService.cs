@@ -15,6 +15,10 @@ namespace 施工定额.Service
             _userConn = userConn;
         }
 
+        /// <summary>
+        /// 从系统库导入一条清单（连同它下属的所有定额和消耗量）到用户库。
+        /// </summary>
+        /// <param name="category">项目类别；空则默认「分部分项」。</param>
         public void ImportQingdan(string sysQingdanCode, string name, string feature, string unit,
             string? category = null, string? unitProjectCode = null)
         {
@@ -118,66 +122,86 @@ namespace 施工定额.Service
             if (string.IsNullOrWhiteSpace(sysCode))
                 throw new ArgumentException("系统清单编码不能为空", nameof(sysCode));
 
-            string baseCode = sysCode.Trim();
+            var baseCode = sysCode.Trim();
             var existing = conn.Query<string>(
-                "SELECT 清单编码 FROM 清单 WHERE 清单编码 = @Code OR 清单编码 LIKE @Like",
-                new { Code = baseCode, Like = baseCode + "%" }, tx).ToList();
+                @"SELECT 清单编码 FROM 清单
+                  WHERE 清单编码 = @Base OR 清单编码 LIKE @Prefix",
+                new { Base = baseCode, Prefix = baseCode + "%" }, tx).ToList();
 
-            if (!existing.Any(c => string.Equals(c, baseCode, StringComparison.Ordinal)))
+            int maxSeq = 0;
+            foreach (var code in existing)
             {
-                // 若库中已有 base+数字后缀风格，仍走后缀；否则首次可用 base+001
+                if (string.IsNullOrEmpty(code)) continue;
+                if (code.Length == baseCode.Length + 3
+                    && code.StartsWith(baseCode, StringComparison.Ordinal)
+                    && int.TryParse(code.AsSpan(baseCode.Length, 3), out var seq))
+                {
+                    if (seq > maxSeq) maxSeq = seq;
+                }
             }
 
-            int maxSuffix = 0;
-            foreach (var c in existing)
+            for (int i = 1; i <= 999; i++)
             {
-                if (c == null) continue;
-                if (c.Length <= baseCode.Length) continue;
-                if (!c.StartsWith(baseCode, StringComparison.Ordinal)) continue;
-                var tail = c.Substring(baseCode.Length);
-                if (tail.Length == 3 && int.TryParse(tail, out int n) && n > maxSuffix)
-                    maxSuffix = n;
+                int next = maxSeq + i;
+                if (next > 999)
+                    throw new InvalidOperationException(
+                        $"清单编码 {baseCode} 的流水号已超过 999，无法继续插入。");
+                string candidate = baseCode + next.ToString("D3");
+                var hit = conn.ExecuteScalar<int>(
+                    "SELECT COUNT(1) FROM 清单 WHERE 清单编码 = @C",
+                    new { C = candidate }, tx);
+                if (hit == 0)
+                    return candidate;
             }
 
-            return baseCode + (maxSuffix + 1).ToString("D3");
+            throw new InvalidOperationException($"无法为 {baseCode} 分配唯一清单编码。");
         }
 
-        public void ImportDinge(string targetQingdanCode, string sysId,
-            string dingeCode, string name, string unit)
+        public void ImportDinge(string targetQingdanCode, string sysId, string dingeCode, string name, string unit)
         {
-            Dinge? sysDg;
+            decimal qingdanWorkAmount;
+            using (var conn = new SqliteConnection(_userConn))
+            {
+                qingdanWorkAmount = conn.ExecuteScalar<decimal>(
+                    "SELECT 工程量 FROM 清单 WHERE 清单编码 = @Code",
+                    new { Code = targetQingdanCode });
+            }
+
             List<Xiaohaoliang> sysXhlList;
 
             using (var conn = new SqliteConnection(_sysConn))
             {
-                sysDg = conn.QueryFirstOrDefault<Dinge>(
-                    "SELECT * FROM 定额_市政工程 WHERE ID号 = @Id",
-                    new { Id = sysId });
-                if (sysDg == null)
-                    throw new InvalidOperationException("系统库中未找到该定额。");
+                sysXhlList = new List<Xiaohaoliang>();
 
-                sysXhlList = conn.Query<Xiaohaoliang>(
-                    "SELECT * FROM 消耗量 WHERE 定额ID = @Id",
-                    new { Id = sysId }).ToList();
+                if (!string.IsNullOrEmpty(sysId))
+                {
+                    sysXhlList = conn.Query<Xiaohaoliang>(
+                        "SELECT * FROM 消耗量 WHERE 定额ID = @Id",
+                        new { Id = sysId }).ToList();
+                }
+
+                if (sysXhlList.Count == 0 && !string.IsNullOrEmpty(dingeCode))
+                {
+                    sysXhlList = conn.Query<Xiaohaoliang>(
+                        "SELECT * FROM 消耗量 WHERE 定额编码 = @Code",
+                        new { Code = dingeCode }).ToList();
+                }
             }
 
+            if (sysXhlList.Count == 0)
+                throw new InvalidOperationException(
+                    $"定额 [{dingeCode}]（系统ID={sysId}）在系统库中未找到消耗量明细。");
+
             string newId = Guid.NewGuid().ToString();
-            sysDg.ID号 = newId;
-            sysDg.清单编码 = targetQingdanCode;
-            sysDg.定额编码 = dingeCode;
-            sysDg.定额名称 = name;
-            sysDg.定额单位 = unit;
-            sysDg.定额工程量 = 0;
-            sysDg.定额单价 = 0;
-            sysDg.定额合价 = 0;
-            sysDg.换算系数 = 1m;
 
             foreach (var xhl in sysXhlList)
             {
                 xhl.定额ID = newId;
                 xhl.清单编码 = targetQingdanCode;
-                xhl.数量 = 0;
-                xhl.市场价合计 = 0;
+                xhl.定额编码 = dingeCode;
+                xhl.市场价 = xhl.定额基价;
+                xhl.数量 = xhl.含量 * qingdanWorkAmount;
+                xhl.市场价合计 = Math.Round(xhl.市场价 * xhl.数量, 2);
             }
 
             using var userConn = new SqliteConnection(_userConn);
@@ -186,21 +210,28 @@ namespace 施工定额.Service
             try
             {
                 userConn.Execute(@"
-                    INSERT INTO 定额_市政工程
-                        (ID号, 清单编码, 定额编码, 定额名称, 定额单位, 定额工程量, 定额单价, 定额合价, 换算系数)
-                    VALUES
-                        (@ID号, @清单编码, @定额编码, @定额名称, @定额单位, @定额工程量, @定额单价, @定额合价, @换算系数)",
-                    sysDg, tx);
+                        INSERT INTO 定额_市政工程
+                            (ID号, 清单编码, 定额编码, 定额名称, 定额单位, 定额工程量, 定额单价, 定额合价, 换算系数)
+                        VALUES
+                            (@ID号, @清单编码, @定额编码, @定额名称, @定额单位, @定额工程量, 0, 0, 1)",
+                    new
+                    {
+                        ID号 = newId,
+                        清单编码 = targetQingdanCode,
+                        定额编码 = dingeCode,
+                        定额名称 = name,
+                        定额单位 = unit,
+                        定额工程量 = qingdanWorkAmount
+                    }, tx);
 
-                if (sysXhlList.Count > 0)
-                    userConn.Execute(@"
+                userConn.Execute(@"
                         INSERT OR IGNORE INTO 消耗量
                             (定额ID, 清单编码, 定额编码, 消耗量类别, 消耗量编码, 消耗量名称,
                              规格型号, 消耗量单位, 含量, 数量, 定额基价, 市场价, 市场价合计)
                         VALUES
                             (@定额ID, @清单编码, @定额编码, @消耗量类别, @消耗量编码, @消耗量名称,
                              @规格型号, @消耗量单位, @含量, @数量, @定额基价, @市场价, @市场价合计)",
-                        sysXhlList, tx);
+                    sysXhlList, tx);
 
                 tx.Commit();
             }
