@@ -95,8 +95,12 @@ namespace 施工定额
 
         private void Form2_Load(object sender, EventArgs e)
         {
-            _cache.LoadCategories();
             LoadAndDisplayQingdanTree();
+            LoadAndDisplayDingeTree();
+        }
+
+        private void tabControl1_MouseClick(object sender, MouseEventArgs e)
+        {
         }
 
         private void tabControl1_SelectedIndexChanged(object sender, EventArgs e)
@@ -130,18 +134,23 @@ namespace 施工定额
             }
 
             DataImported?.Invoke();
-            Close();
+            this.Close();
         }
 
         private void treeView1_AfterSelect(object sender, TreeViewEventArgs e)
         {
-            if (e.Node == null) return;
-            var ids = new List<int>();
-            GetAllNodeIds(e.Node, ids);
-            if (ids.Count == 0) return;
+            if (e.Node == null || e.Node.Tag == null) return;
 
-            var details = _cache.GetQingdanDetailsByCategoryIds(ids);
-            dataGridView1.DataSource = details;
+            List<int> ids = new List<int>();
+            GetAllNodeIds(e.Node, ids);
+
+            if (ids.Count == 0)
+            {
+                dataGridView1.DataSource = null;
+                return;
+            }
+
+            dataGridView1.DataSource = _cache.GetQingdanDetailsByCategoryIds(ids).ToList();
         }
 
         private void dataGridView2_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
@@ -149,15 +158,13 @@ namespace 施工定额
             if (e.RowIndex == -1) return;
             if (string.IsNullOrEmpty(_targetQingdanCode))
             {
-                ErrorHandler.ShowBusiness("请先在主界面选中一条清单再导入定额。");
+                ErrorHandler.ShowBusiness("请先选择一条清单，再导入定额。");
                 return;
             }
-
             string sysId = dataGridView2.Rows[e.RowIndex].Cells["ID号"].Value?.ToString() ?? "";
             string code = dataGridView2.Rows[e.RowIndex].Cells["定额编码"].Value?.ToString() ?? "";
             string name = dataGridView2.Rows[e.RowIndex].Cells["定额名称"].Value?.ToString() ?? "";
             string unit = dataGridView2.Rows[e.RowIndex].Cells["定额单位"].Value?.ToString() ?? "";
-            if (string.IsNullOrEmpty(sysId)) return;
 
             try
             {
@@ -170,18 +177,26 @@ namespace 施工定额
             }
 
             DataImported?.Invoke();
-            Close();
+            this.Close();
+        }
+
+        private void dataGridView1_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
         }
 
         private void treeView2_AfterSelect(object sender, TreeViewEventArgs e)
         {
             if (e.Node == null) return;
-            var ids = new List<int>();
-            GetAllNodeIds(e.Node, ids);
-            if (ids.Count == 0) return;
 
-            var details = _cache.GetDingeDetailsByCategoryIds(ids);
-            dataGridView2.DataSource = details;
+            List<int> ids = new List<int>();
+            GetAllNodeIds(e.Node, ids);
+            if (ids.Count == 0)
+            {
+                dataGridView2.DataSource = null;
+                return;
+            }
+
+            dataGridView2.DataSource = _cache.GetDingeByCategoryIds(ids).ToList();
         }
     }
 }
