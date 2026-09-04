@@ -3,30 +3,25 @@ using 施工定额.Helper;
 
 namespace 施工定额.UI
 {
-    /// <summary>
-    /// 统一管理 DataGridView 右键菜单。
-    /// 删除等业务走 Presenter，不再直接依赖 Repository。
-    /// </summary>
     public class ContextMenuBuilder
     {
         private readonly QingdanPresenter _presenter;
         private readonly SelectionState _selection;
         private readonly Action _reloadAll;
+        private readonly Func<string> _getUnitProjectCode;
 
         public ContextMenuBuilder(
             QingdanPresenter presenter,
             SelectionState selection,
-            Action reloadAll)
+            Action reloadAll,
+            Func<string>? getUnitProjectCode = null)
         {
             _presenter = presenter;
             _selection = selection;
             _reloadAll = reloadAll;
+            _getUnitProjectCode = getUnitProjectCode ?? (() => UnitProject.DefaultCode);
         }
 
-        /// <param name="qingdanCategory">
-        /// 右键「新建清单」时写入的项目类别。
-        /// 分部分项页传「分部分项」，措施页传「措施项目」。
-        /// </param>
         public ContextMenuStrip BuildQingdanMenu(DataGridView dgv,
             string qingdanCategory = QingdanCategory.分部分项)
         {
@@ -88,7 +83,7 @@ namespace 施工定额.UI
 
         private void CreateNewQingdan(string qingdanCategory)
         {
-            var f2 = new Form2("", qingdanCategory);
+            var f2 = new Form2("", qingdanCategory, _getUnitProjectCode());
             f2.DataImported += () => _reloadAll();
             f2.Show();
         }
