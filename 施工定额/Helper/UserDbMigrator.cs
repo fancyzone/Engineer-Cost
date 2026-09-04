@@ -145,7 +145,7 @@ WHERE rowid NOT IN (
     SELECT MIN(rowid)
     FROM ""消耗量""
     WHERE ""定额ID"" IS NOT NULL AND ""消耗量编码"" IS NOT NULL
-    GROUP BY ""定额ID", ""消耗量编码""
+    GROUP BY ""定额ID"", ""消耗量编码""
 )
 AND ""定额ID"" IS NOT NULL AND ""消耗量编码"" IS NOT NULL;";
                 var removed = dedupe.ExecuteNonQuery();
